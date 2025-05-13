@@ -1,2 +1,0 @@
-# NEA
-Nea Coursework
