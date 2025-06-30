@@ -1,0 +1,10 @@
+{
+    'Cities':
+        [
+        'Osnabrook':{'Munster':7}
+        'Munster':{'Osnabrook':7,'Essen':6,'Dortmund':2}
+        'Essen':{'Munster':6,'Dortmund':3}
+        'Dortmund'{'Essen':3}
+        'FrankFurt'{'Essen':2}
+        ],
+}
