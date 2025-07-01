@@ -1,19 +1,23 @@
 from UI import UserInterface
 from Player import PlayerC
+import random
 class Game:
-    def __init__(self, UI):
+    def __init__(self, UI:UserInterface):
         self.__UI = UI
         self.__GameSetUp()
+        self.__STARTING_ELECTROS = 50
 
 
     def __GameSetUp(self):
-        self.__NofPlayers = self.UI.RequestPlayers(self)
-        self.__Players = [PlayerC for i in range (0, self.NofPlayers )]
+        self.__NofPlayers = self.__UI.RequestPlayers()
+        self.__Players = [PlayerC(self.__STARTING_ELECTROS,self.__UI) for i in range (0, self.__NofPlayers)]
         self.__Round = 0
-    
+        self.__stage = 1
+        self.__Players = Phase1.Random_Assignment(self.__Players)
+        self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
+
     def Phase1(self):
-        for player in self.__Players:
-            player.
+        pass
 
     def Phase2():
         pass
@@ -23,6 +27,17 @@ class Game:
         pass
     def Phase5():
         pass
+
+
+class Phase1:
+
+    def Random_Assignment(players):
+        random.shuffle(players)
+        return players
+    def Determine_Player_Order(players):
+        players.sort()
+
+            
 
         
 
