@@ -7,10 +7,10 @@ class UserInterface:
         Valid = False
         while not Valid:
             try:
-                Choice = int(input('Please enter the number of players playing: '))
+                Choice = int(input('Please enter the number of players playing:     '))
                 Valid = True
             except ValueError:
-                print('You didnt not enter an integer, please choose a whole positive number of players:')
+                print('You didnt not enter an integer, please choose a whole positive number of players:    ')
         return Choice
     
     def DisplayBoard(Board):
@@ -21,7 +21,7 @@ class UserInterface:
         return Name
     
     def DisplayPlayerOrder(Player_names:list[str]):
-        print('This is the PLayer order:')
+        print('This is the PLayer order:    ')
         for place, name in enumerate(Player_names):
             print(f'{place+1}. {name}')
         return

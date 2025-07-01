@@ -4,8 +4,10 @@ import random
 class Game:
     def __init__(self, UI:UserInterface):
         self.__UI = UI
-        self.__GameSetUp()
         self.__STARTING_ELECTROS = 50
+        self.__GameSetUp()
+
+        
 
 
     def __GameSetUp(self):
@@ -15,6 +17,7 @@ class Game:
         self.__stage = 1
         self.__Players = Phase1.Random_Assignment(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
+        self.
 
     def Phase1(self):
         pass

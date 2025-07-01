@@ -1,8 +1,9 @@
+from UI import UserInterface
+
 class PlayerC:
-    def __init__(self,Electros,UI):
+    def __init__(self,Electros:int,UI:UserInterface):
         self.__Electros = Electros
         self.__PowerStations = []
-        
         self.__cities = []
         self.__UI = UI
         self.__name = self.__UI.GetName()

@@ -1,10 +1,503 @@
 {
-    'Cities':
-        [
-        'Osnabrook':{'Munster':7}
-        'Munster':{'Osnabrook':7,'Essen':6,'Dortmund':2}
-        'Essen':{'Munster':6,'Dortmund':3}
-        'Dortmund'{'Essen':3}
-        'FrankFurt'{'Essen':2}
-        ],
+    "map_name": "Power Grid: North America",
+    "number_of_regions": 6,
+    "regions": [
+        {"name": "Yellow", "color": "#FFFF00"},
+        {"name": "Red", "color": "#FF0000"},
+        {"name": "Green", "color": "#008000"},
+        {"name": "Blue", "color": "#0000FF"},
+        {"name": "Purple", "color": "#800080"},
+        {"name": "Brown", "color": "#A52A2A"}
+    ],
+    "cities": [
+        {
+            "id": "boston",
+            "name": "Boston",
+            "region": "Yellow",
+            "connections": {
+                "newyork": 4,
+                "albany": 4,
+                "montreal": 4
+            }
+        },
+        {
+            "id": "newyork",
+            "name": "New York",
+            "region": "Yellow",
+            "connections": {
+                "boston": 4,
+                "albany": 3,
+                "philadelphia": 2,
+                "pittsburgh": 3
+            }
+        },
+        {
+            "id": "albany",
+            "name": "Albany",
+            "region": "Yellow",
+            "connections": {
+                "boston": 4,
+                "newyork": 3,
+                "pittsburgh": 5,
+                "toronto": 5
+            }
+        },
+        {
+            "id": "philadelphia",
+            "name": "Philadelphia",
+            "region": "Red",
+            "connections": {
+                "newyork": 2,
+                "baltimore": 2,
+                "pittsburgh": 3,
+                "washington": 3
+            }
+        },
+        {
+            "id": "pittsburgh",
+            "name": "Pittsburgh",
+            "region": "Red",
+            "connections": {
+                "newyork": 3,
+                "albany": 5,
+                "philadelphia": 3,
+                "baltimore": 3,
+                "cleveland": 2,
+                "cincinnati": 4
+            }
+        },
+        {
+            "id": "baltimore",
+            "name": "Baltimore",
+            "region": "Red",
+            "connections": {
+                "philadelphia": 2,
+                "pittsburgh": 3,
+                "washington": 1,
+                "richmond": 3
+            }
+        },
+        {
+            "id": "washington",
+            "name": "Washington",
+            "region": "Red",
+            "connections": {
+                "philadelphia": 3,
+                "baltimore": 1,
+                "richmond": 2
+            }
+        },
+        {
+            "id": "richmond",
+            "name": "Richmond",
+            "region": "Green",
+            "connections": {
+                "baltimore": 3,
+                "washington": 2,
+                "charlotte": 3,
+                "raleigh": 2
+            }
+        },
+        {
+            "id": "charlotte",
+            "name": "Charlotte",
+            "region": "Green",
+            "connections": {
+                "richmond": 3,
+                "raleigh": 2,
+                "atlanta": 3,
+                "nashville": 4
+            }
+        },
+        {
+            "id": "raleigh",
+            "name": "Raleigh",
+            "region": "Green",
+            "connections": {
+                "richmond": 2,
+                "charlotte": 2,
+                "atlanta": 3
+            }
+        },
+        {
+            "id": "atlanta",
+            "name": "Atlanta",
+            "region": "Green",
+            "connections": {
+                "charlotte": 3,
+                "raleigh": 3,
+                "nashville": 2,
+                "jacksonville": 3,
+                "neworleans": 5
+            }
+        },
+        {
+            "id": "nashville",
+            "name": "Nashville",
+            "region": "Green",
+            "connections": {
+                "charlotte": 4,
+                "atlanta": 2,
+                "stlouis": 3,
+                "cincinnati": 3
+            }
+        },
+        {
+            "id": "jacksonville",
+            "name": "Jacksonville",
+            "region": "Blue",
+            "connections": {
+                "atlanta": 3,
+                "orlando": 2,
+                "miami": 4
+            }
+        },
+        {
+            "id": "orlando",
+            "name": "Orlando",
+            "region": "Blue",
+            "connections": {
+                "jacksonville": 2,
+                "miami": 3
+            }
+        },
+        {
+            "id": "miami",
+            "name": "Miami",
+            "region": "Blue",
+            "connections": {
+                "jacksonville": 4,
+                "orlando": 3
+            }
+        },
+        {
+            "id": "neworleans",
+            "name": "New Orleans",
+            "region": "Blue",
+            "connections": {
+                "atlanta": 5,
+                "houston": 4,
+                "dallas": 5,
+                "memphis": 3
+            }
+        },
+        {
+            "id": "houston",
+            "name": "Houston",
+            "region": "Blue",
+            "connections": {
+                "neworleans": 4,
+                "dallas": 2,
+                "sanantonio": 2
+            }
+        },
+        {
+            "id": "dallas",
+            "name": "Dallas",
+            "region": "Blue",
+            "connections": {
+                "neworleans": 5,
+                "houston": 2,
+                "sanantonio": 3,
+                "oklahomacity": 2
+            }
+        },
+        {
+            "id": "sanantonio",
+            "name": "San Antonio",
+            "region": "Blue",
+            "connections": {
+                "houston": 2,
+                "dallas": 3,
+                "elpaso": 6
+            }
+        },
+        {
+            "id": "memphis",
+            "name": "Memphis",
+            "region": "Purple",
+            "connections": {
+                "neworleans": 3,
+                "stlouis": 2,
+                "littlerock": 2,
+                "oklahomacity": 3
+            }
+        },
+        {
+            "id": "stlouis",
+            "name": "St. Louis",
+            "region": "Purple",
+            "connections": {
+                "nashville": 3,
+                "memphis": 2,
+                "kansascity": 2,
+                "indianapolis": 2,
+                "cincinnati": 4
+            }
+        },
+        {
+            "id": "indianapolis",
+            "name": "Indianapolis",
+            "region": "Purple",
+            "connections": {
+                "stlouis": 2,
+                "cincinnati": 1,
+                "detroit": 3,
+                "chicago": 2
+            }
+        },
+        {
+            "id": "cincinnati",
+            "name": "Cincinnati",
+            "region": "Purple",
+            "connections": {
+                "pittsburgh": 4,
+                "nashville": 3,
+                "stlouis": 4,
+                "indianapolis": 1,
+                "cleveland": 2
+            }
+        },
+        {
+            "id": "cleveland",
+            "name": "Cleveland",
+            "region": "Purple",
+            "connections": {
+                "pittsburgh": 2,
+                "cincinnati": 2,
+                "detroit": 2,
+                "toronto": 4
+            }
+        },
+        {
+            "id": "detroit",
+            "name": "Detroit",
+            "region": "Brown",
+            "connections": {
+                "indianapolis": 3,
+                "cleveland": 2,
+                "chicago": 3,
+                "toronto": 3
+            }
+        },
+        {
+            "id": "chicago",
+            "name": "Chicago",
+            "region": "Brown",
+            "connections": {
+                "indianapolis": 2,
+                "detroit": 3,
+                "milwaukee": 1,
+                "kansascity": 4
+            }
+        },
+        {
+            "id": "milwaukee",
+            "name": "Milwaukee",
+            "region": "Brown",
+            "connections": {
+                "chicago": 1,
+                "minneapolis": 3
+            }
+        },
+        {
+            "id": "toronto",
+            "name": "Toronto",
+            "region": "Brown",
+            "connections": {
+                "albany": 5,
+                "cleveland": 4,
+                "detroit": 3,
+                "montreal": 4
+            }
+        },
+        {
+            "id": "montreal",
+            "name": "Montreal",
+            "region": "Brown",
+            "connections": {
+                "boston": 4,
+                "toronto": 4
+            }
+        },
+        {
+            "id": "kansascity",
+            "name": "Kansas City",
+            "region": "Brown",
+            "connections": {
+                "stlouis": 2,
+                "chicago": 4,
+                "omaha": 1,
+                "oklahomacity": 2
+            }
+        },
+        {
+            "id": "omaha",
+            "name": "Omaha",
+            "region": "Brown",
+            "connections": {
+                "kansascity": 1,
+                "denver": 3,
+                "minneapolis": 3
+            }
+        },
+        {
+            "id": "minneapolis",
+            "name": "Minneapolis",
+            "region": "Brown",
+            "connections": {
+                "milwaukee": 3,
+                "omaha": 3,
+                "denver": 5
+            }
+        },
+        {
+            "id": "oklahomacity",
+            "name": "Oklahoma City",
+            "region": "Purple",
+            "connections": {
+                "dallas": 2,
+                "memphis": 3,
+                "kansascity": 2,
+                "denver": 4
+            }
+        },
+        {
+            "id": "littlerock",
+            "name": "Little Rock",
+            "region": "Purple",
+            "connections": {
+                "memphis": 2,
+                "dallas": 3
+            }
+        },
+        {
+            "id": "denver",
+            "name": "Denver",
+            "region": "Brown",
+            "connections": {
+                "omaha": 3,
+                "minneapolis": 5,
+                "oklahomacity": 4,
+                "albuquerque": 3,
+                "saltlakecity": 4,
+                "cheyenne": 1
+            }
+        },
+        {
+            "id": "cheyenne",
+            "name": "Cheyenne",
+            "region": "Brown",
+            "connections": {
+                "denver": 1,
+                "saltlakecity": 3
+            }
+        },
+        {
+            "id": "albuquerque",
+            "name": "Albuquerque",
+            "region": "Blue",
+            "connections": {
+                "denver": 3,
+                "elpaso": 2,
+                "phoenix": 3,
+                "saltlakecity": 4
+            }
+        },
+        {
+            "id": "elpaso",
+            "name": "El Paso",
+            "region": "Blue",
+            "connections": {
+                "sanantonio": 6,
+                "albuquerque": 2,
+                "phoenix": 3
+            }
+        },
+        {
+            "id": "phoenix",
+            "name": "Phoenix",
+            "region": "Blue",
+            "connections": {
+                "elpaso": 3,
+                "albuquerque": 3,
+                "lasvegas": 2,
+                "losangeles": 3
+            }
+        },
+        {
+            "id": "saltlakecity",
+            "name": "Salt Lake City",
+            "region": "Brown",
+            "connections": {
+                "denver": 4,
+                "cheyenne": 3,
+                "albuquerque": 4,
+                "lasvegas": 3,
+                "boise": 2
+            }
+        },
+        {
+            "id": "lasvegas",
+            "name": "Las Vegas",
+            "region": "Blue",
+            "connections": {
+                "phoenix": 2,
+                "saltlakecity": 3,
+                "losangeles": 1
+            }
+        },
+        {
+            "id": "losangeles",
+            "name": "Los Angeles",
+            "region": "Blue",
+            "connections": {
+                "phoenix": 3,
+                "lasvegas": 1,
+                "sanfrancisco": 3,
+                "seattle": 6
+            }
+        },
+        {
+            "id": "sanfrancisco",
+            "name": "San Francisco",
+            "region": "Green",
+            "connections": {
+                "losangeles": 3,
+                "boise": 3,
+                "portland": 2
+            }
+        },
+        {
+            "id": "boise",
+            "name": "Boise",
+            "region": "Brown",
+            "connections": {
+                "saltlakecity": 2,
+                "sanfrancisco": 3,
+                "portland": 2,
+                "seattle": 3
+            }
+        },
+        {
+            "id": "portland",
+            "name": "Portland",
+            "region": "Green",
+            "connections": {
+                "sanfrancisco": 2,
+                "boise": 2,
+                "seattle": 1
+            }
+        },
+        {
+            "id": "seattle",
+            "name": "Seattle",
+            "region": "Green",
+            "connections": {
+                "losangeles": 6,
+                "boise": 3,
+                "portland": 1
+            }
+        }
+    ]
 }
