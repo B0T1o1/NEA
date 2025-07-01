@@ -3,7 +3,10 @@ class PlayerC:
         self.__Electros = Electros
         self.__PowerStations = []
         self.__name = name
-    def GetName
+        self.__cities = []
+    def GetName():
+        pass
+    
 
 
         

@@ -9,9 +9,12 @@ class Game:
     def __GameSetUp(self):
         self.__NofPlayers = self.UI.RequestPlayers(self)
         self.__Players = [PlayerC for i in range (0, self.NofPlayers )]
+        self.__Round = 0
     
-    def Phase1():
-        pass
+    def Phase1(self):
+        for player in self.__Players:
+            player.
+
     def Phase2():
         pass
     def Phase3():
