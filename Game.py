@@ -1,6 +1,8 @@
 from UI import UserInterface
 from Player import PlayerC
 import random
+from Board import Board
+from Resource_Market import R_Market
 class Game:
     def __init__(self, UI:UserInterface):
         self.__UI = UI
@@ -17,9 +19,11 @@ class Game:
         self.__stage = 1
         self.__Players = Phase1.Random_Assignment(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
-        self.
+        map = self.__UI.SelectMap()
+        self.__Board = self.__HandleBoard(map)
+        self.ChooseStart
 
-    def Phase1(self):
+    def __HandleBoard(self,):
         pass
 
     def Phase2():
@@ -37,8 +41,17 @@ class Phase1:
     def Random_Assignment(players):
         random.shuffle(players)
         return players
+    
     def Determine_Player_Order(players):
         players.sort()
+
+class Phase2:
+    def First_round(players):
+        pass
+
+    def Auction(players):
+
+
 
             
 

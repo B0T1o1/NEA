@@ -16,6 +16,10 @@ class PlayerC:
 
     def GetElectros(self) -> int:
         return self.__Electros
+    
+    def CheckEnoughElectros(self,Required:int) -> bool:
+        return self.__Electros >= Required
+    
     def GetCities(self) -> list:
         return self.__cities
     

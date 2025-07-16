@@ -15,13 +15,17 @@ class UserInterface:
     
     def DisplayBoard(Board):
         pass
+    def SelectMap() -> int:
+        map = input('Please type G for germany map or A for America Map')
+        if map == 'G': return 0
+        if map == 'A': return 1
 
     def GetName() -> str:
         Name = input('Please enter the name of a player')
         return Name
     
     def DisplayPlayerOrder(Player_names:list[str]):
-        print('This is the PLayer order:    ')
+        print('This is the Player order:    ')
         for place, name in enumerate(Player_names):
             print(f'{place+1}. {name}')
         return
