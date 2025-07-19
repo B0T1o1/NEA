@@ -13,7 +13,7 @@ class UserInterface:
     
     def DisplayBoard(Board):
         pass
-    def SelectMap() -> int:
+    def SelectMap():
         map = input('Please type G for germany map or A for America Map:    ')
         if map == 'G': 
             return 0
@@ -22,14 +22,33 @@ class UserInterface:
         else: 
             return 0
 
-    def GetName() -> str:
+    def GetName() :
         Name = input('Please enter the name of a player:    ')
         return Name
     
-    def DisplayPlayerOrder(Player_names:list[str]):
+    def DisplayPlayerOrder(Player_names):
         print('This is the Player order:    ')
         for place, name in enumerate(Player_names):
             print(f'{place+1}. {name}')
+
+    def GetStartingCity(Cities,Player):
+        Choice = ""
+        while Choice not in Cities:
+            print(f"Which City would {Player} like to start in, the options are:")
+            for city in Cities:
+                print(city)
+            Choice = input("Choice:    ")
+            if Choice not in Cities:
+                print("that is not a choice, please spell exactly as written")
+        print(f"{Player} Have chosen {Choice}")
+        return Choice
+            
+
+
+
+    
+    
+
 
 
 

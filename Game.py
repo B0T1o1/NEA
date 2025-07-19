@@ -8,8 +8,9 @@ class Game:
     def __init__(self, UI:UserInterface,BoardFile = "board.JSON"):
         self.__UI = UI
         self.__STARTING_ELECTROS = 50
-        self.__GameSetUp()
         self.__BoardFile = BoardFile
+
+        self.__GameSetUp()
 
         
 
@@ -28,15 +29,17 @@ class Game:
 
     def __HandleBoard(self,map):
         return Board(self.__BoardFile, map)
+    
+    def ChooseStart(self):
+        for player in self.__Players:
+            # Create a list of available cities for the current player
+            available_cities = [city for city in self.__Board.city_ids if self.__Board.cityIds_to_CityClass[city].CityIsAvailable(player)]
+            
+            # Pass the list to the UI method
+            self.__UI.GetStartingCity(available_cities,player.GetName())
 
-    def Phase2():
-        pass
-    def Phase3():
-        pass
-    def Phase4():
-        pass
-    def Phase5():
-        pass
+
+
 
 
 class Phase1:

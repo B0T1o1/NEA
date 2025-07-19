@@ -19,9 +19,9 @@ class Board:
         self.city_ids = [city["id"] for city in self.__map_data["cities"]]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
         self.indexes_to_cities = {i:city_id for i,city_id in enumerate(self.city_ids)}
-        self.cityIds_to_CityClass = {city_id:City(city_id,i) for i,city_id in enumerate(self.city_ids)}
+
+        self.cityIds_to_CityClass = {city["id"]:City(city["id"],i,city["region"]) for i,city in enumerate(self.__map_data["cities"])}
         self.number_of_cities = len(self.city_ids)
-        print(self.number_of_cities)
 
         self.adjancency_matrix = [[math.inf for _ in range( self.number_of_cities) ] for _ in range(self.number_of_cities)]
         
@@ -77,12 +77,13 @@ class Board:
 
 
 class City:
-    def __init__(self,CityId,CityIndex):
+    def __init__(self,CityId,CityIndex,Region):
         self.__CityId = CityId
         self.__PlayersOwn = []
         self.__Stage = 1
+        self.Region = Region
     def PlayerBuyCity(self,Electros,PlayerName):
-        if len(self.__PlayersOwn) != self.__Stage and PlayerName not in self.__PlayersOwn:
+        if self.CityIsAvailable(PlayerName):
             Cost = len(self.__PlayersOwn + 2) * 5 
             if Cost > Electros:
                 raise ValueError # TODO Create an insuffcient funds error
@@ -92,11 +93,19 @@ class City:
                 return Electros
         else:
             pass # TODO create an error
+        
     def DoesPlayerOwnCity(self,PlayerName):
         if PlayerName in self.__PlayersOwn:
             return True
         else:
             return False
+    
+    def CityIsAvailable(self,PlayerName):
+        if len(self.__PlayersOwn) != self.__Stage and PlayerName not in self.__PlayersOwn:
+            return True 
+        else:
+            return False
+
     
     
 
