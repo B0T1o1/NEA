@@ -1,6 +1,7 @@
 from UI import UserInterface
 import json
 import math
+
 class Board:
     def __init__(self,filename:str,map):
         try:
@@ -10,7 +11,6 @@ class Board:
             pass
         self.__map_data = json.load(file)["maps"][map]
         self.LoadMap()
-        print(self.adjancency_matrix)
 
 
 
@@ -19,7 +19,10 @@ class Board:
         self.city_ids = [city["id"] for city in self.__map_data["cities"]]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
         self.indexes_to_cities = {i:city_id for i,city_id in enumerate(self.city_ids)}
+        self.cityIds_to_CityClass = {city_id:City(city_id,i) for i,city_id in enumerate(self.city_ids)}
         self.number_of_cities = len(self.city_ids)
+        print(self.number_of_cities)
+
         self.adjancency_matrix = [[math.inf for _ in range( self.number_of_cities) ] for _ in range(self.number_of_cities)]
         
         # Populate adjanceny matrix
@@ -40,16 +43,69 @@ class Board:
         return self.adjancency_matrix[Source_index][Connection_index]
     
 
-    def Cheapest_Path(self,Source_id, Owned_id,Connection_id,cost = 0):
-        # Essentially a recusive djkstra's
-        # TODO
-        Connection_Cost = self.CheckConnectionCost(Source_id,Connection_id)
 
-        if Connection_Cost != math.inf:
-            return cost
+    def DjkstrasSearch(self,Source_index, PlayerName, Connection_index,):
+        previous  = [None] * self.number_of_cities
+        visited = [False] * self.number_of_cities
+        distances = [math.inf] * self.number_of_cities
+        distances[Source_index] = 0
+        v = Source_index
+        while not all(visited):
+            for w in range(self.number_of_cities):
+                if self.cityIds_to_CityClass[self.indexes_to_cities[v]].DoesPlayerOwnCity(PlayerName) and self.cityIds_to_CityClass[self.indexes_to_cities[w]].DoesPlayerOwnCity(PlayerName):
+                    cost = 0
+                else:
+                    cost = self.adjancency_matrix[v][w]
+                dist_to_w = distances[v] + cost
+                if dist_to_w < distances[w]:
+                    distances[w] = dist_to_w
+                    previous[w] = v
+            visited[v] = True
+            min_d = math.inf
+            for w in range(self.number_of_cities):
+                if not visited[w] and distances[w] < min_d:
+                    min_d = distances[w]
+                    v = w
+        return distances[Connection_index]
+
         
+
+        
+        
+
+
+
+
+class City:
+    def __init__(self,CityId,CityIndex):
+        self.__CityId = CityId
+        self.__PlayersOwn = []
+        self.__Stage = 1
+    def PlayerBuyCity(self,Electros,PlayerName):
+        if len(self.__PlayersOwn) != self.__Stage and PlayerName not in self.__PlayersOwn:
+            Cost = len(self.__PlayersOwn + 2) * 5 
+            if Cost > Electros:
+                raise ValueError # TODO Create an insuffcient funds error
+            else:
+                Electros -= Cost
+                self.__PlayersOwn.append(PlayerName)  
+                return Electros
         else:
-            pass
+            pass # TODO create an error
+    def DoesPlayerOwnCity(self,PlayerName):
+        if PlayerName in self.__PlayersOwn:
+            return True
+        else:
+            return False
+    
+    
+
+            
+            
+
+
+
+
 
 
 
@@ -59,5 +115,7 @@ class Board:
 
 
 
+if __name__ == "__main__":   
+    B = Board('board.JSON',0)
+    print(B.DjkstrasSearch(B.city_to_indexes['erfurt'],"Luca",B.city_to_indexes['frankfurt']))
 
-Board('board.JSON',0)
