@@ -1,11 +1,11 @@
-from UI import UserInterface
+from UI import UserInterfaceC
 from Player import PlayerC
 import random
-from Board import Board
+from Board import BoardC
 from Resource_Market import R_Market
 
-class Game:
-    def __init__(self, UI:UserInterface,BoardFile = "board.JSON"):
+class GameC:
+    def __init__(self, UI:UserInterfaceC,BoardFile = "board.JSON"):
         self.__UI = UI
         self.__STARTING_ELECTROS = 50
         self.__BoardFile = BoardFile
@@ -23,13 +23,11 @@ class Game:
         self.__Players = Phase1.Random_Assignment(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
         map = self.__UI.SelectMap()
-        self.__Board = self.__HandleBoard(map)
+        self.__Board = BoardC(self.__BoardFile, map)
         self.ChooseStart()
 
 
-    def __HandleBoard(self,map):
-        return Board(self.__BoardFile, map)
-    
+
     def ChooseStart(self):
         for player in self.__Players:
             # Create a list of available cities for the current player
@@ -53,7 +51,8 @@ class Phase1:
 
 class Phase2:
     def First_round(players):
-        pass
+        for player in players:
+            pass
 
     def Auction(players):
         pass
@@ -64,6 +63,6 @@ class Phase2:
         
 
 if __name__ == '__main__':
-    G = Game(UserInterface)
+    G = GameC(UserInterfaceC())
 
 

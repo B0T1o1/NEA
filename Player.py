@@ -1,12 +1,14 @@
-from UI import UserInterface
+from UI import UserInterfaceC
+from PowerStation import PowerStationC
 
 class PlayerC:
-    def __init__(self,Electros:int,UI:UserInterface):
+    def __init__(self,Electros:int,UI:UserInterfaceC):
         self.__Electros = Electros
-        self.__PowerStations = []
-        self.__cities = []
+        self.__PowerStations: list[PowerStationC] = []
+        self.__cities: list[str] = []
         self.__UI = UI
         self.__name = self.__UI.GetName()
+
 
     def GetPowerStations(self) -> list:
         return self.__PowerStations.sort()
@@ -23,6 +25,16 @@ class PlayerC:
     def GetCities(self) -> list:
         return self.__cities
     
+    def AddPowerstation(self,PowerStation:PowerStationC):
+        while len(self.__PowerStations) == 3:
+            remove = self.__UI.RemovePowerStation(self.__PowerStations)
+            for i,Station in enumerate(self.__PowerStations):
+                if remove == Station.GetValue():
+                    self.__PowerStations[i] = PowerStation
+        if len(self.__PowerStations) != 3:
+            self.__PowerStations.append(PowerStation)
+        return
+    
 
     def __lt__(self,other):
         if not isinstance(other, PlayerC):
@@ -31,9 +43,9 @@ class PlayerC:
             return False
         if len(self.GetCities()) < len(self.GetCities()):
             return True
-        if self.GetPowerStations()[-1].sort()[-1].GetValue() <  other.GetPowerStations()[-1].GetValue():
+        if self.GetPowerStations()[-1].GetValue() <  other.GetPowerStations()[-1].GetValue():
             return True
-        if self.GetPowerStations()[-1].sort()[-1].GetValue() >  other.GetPowerStations()[-1].GetValue():
+        if self.GetPowerStations()[-1].GetValue() >  other.GetPowerStations()[-1].GetValue():
             return False
 
             

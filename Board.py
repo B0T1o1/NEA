@@ -1,8 +1,7 @@
-from UI import UserInterface
 import json
 import math
 
-class Board:
+class BoardC:
     def __init__(self,filename:str,map):
         try:
             file = open(filename,'r')
@@ -125,6 +124,6 @@ class City:
 
 
 if __name__ == "__main__":   
-    B = Board('board.JSON',0)
+    B = BoardC('board.JSON',0)
     print(B.DjkstrasSearch(B.city_to_indexes['erfurt'],"Luca",B.city_to_indexes['frankfurt']))
 
