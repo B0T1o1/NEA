@@ -15,7 +15,7 @@ class UserInterfaceC:
         return Choice
     
     def DisplayBoard(self,BoardMap:BoardC) -> int:
-        pass
+        return 0
 
     def SelectMap(self):
         map = input('Please type G for germany map or A for America Map:    ')

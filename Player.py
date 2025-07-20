@@ -11,7 +11,8 @@ class PlayerC:
 
 
     def GetPowerStations(self) -> list:
-        return self.__PowerStations.sort()
+        self.__PowerStations.sort()
+        return self.__PowerStations
     
     def GetName(self) -> str:
         return self.__name

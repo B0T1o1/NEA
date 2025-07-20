@@ -1,0 +1,255 @@
+[
+    {
+      "Value": 3,
+      "FuelType": "O",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 4,
+      "FuelType": "C",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 5,
+      "FuelType": "H",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 6,
+      "FuelType": "G",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 7,
+      "FuelType": "O",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 8,
+      "FuelType": "C",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 9,
+      "FuelType": "O",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 10,
+      "FuelType": "C",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 11,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 12,
+      "FuelType": "H",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 13,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 1
+    },
+    {
+      "Value": 14,
+      "FuelType": "G",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 15,
+      "FuelType": "C",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 3
+    },
+    {
+      "Value": 16,
+      "FuelType": "O",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 3
+    },
+    {
+      "Value": 17,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 18,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 19,
+      "FuelType": "G",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 3
+    },
+    {
+      "Value": 20,
+      "FuelType": "C",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 21,
+      "FuelType": "H",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 22,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 2
+    },
+    {
+      "Value": 23,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 3
+    },
+    {
+      "Value": 24,
+      "FuelType": "G",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 25,
+      "FuelType": "C",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 26,
+      "FuelType": "O",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 27,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 3
+    },
+    {
+      "Value": 28,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 29,
+      "FuelType": "H",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 30,
+      "FuelType": "G",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 31,
+      "FuelType": "C",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 32,
+      "FuelType": "O",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 33,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 34,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 35,
+      "FuelType": "O",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 36,
+      "FuelType": "C",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 7
+    },
+    {
+      "Value": 37,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 4
+    },
+    {
+      "Value": 38,
+      "FuelType": "G",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 7
+    },
+    {
+      "Value": 39,
+      "FuelType": "N",
+      "FuelAmount": 1,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 40,
+      "FuelType": "O",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 42,
+      "FuelType": "C",
+      "FuelAmount": 2,
+      "NumberOfCitiesPowered": 6
+    },
+    {
+      "Value": 44,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 5
+    },
+    {
+      "Value": 46,
+      "FuelType": "H",
+      "FuelAmount": 3,
+      "NumberOfCitiesPowered": 7
+    },
+    {
+      "Value": 50,
+      "FuelType": "R",
+      "FuelAmount": 0,
+      "NumberOfCitiesPowered": 6
+    }
+  ]
+  

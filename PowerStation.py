@@ -1,6 +1,4 @@
 
-
-
 class PowerStationC:
     def __init__(self,Value:int,FuelType:chr,FuelAmount:int,NumberOfCitiesPowered:int):
         self.__Value = Value

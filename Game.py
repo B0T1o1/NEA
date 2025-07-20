@@ -48,6 +48,7 @@ class Phase1:
     
     def Determine_Player_Order(players):
         players.sort()
+        return players
 
 class Phase2:
     def First_round(players):
