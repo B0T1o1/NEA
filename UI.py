@@ -65,7 +65,20 @@ class UserInterfaceC:
     def DisplayPowerStation(self,Position, PStation:PowerStationC):
         print(f'{Position}. \nValue:{PStation.GetValue()}\nType:{PStation.GetFuelType}\nNumber of Resource to Power:{PStation.GetFuelAmount()}\nNumber Of Cities Powered:{PStation.GetNumberOfCitiesPowered()}' )
 
+    def DisplayCurrentMarket(self,discount:bool, Stations:list[PowerStationC]):
+        print("This is the current market:")
+        if discount: print("First Currently has discount")
+        for i,station  in enumerate(Stations):
+            self.DisplayPowerStation(i+1,station)
+
+    def DisplayFutureMarket(self, Stations:list[PowerStationC]):
+            print("This is the future market:")
+            for i,station  in enumerate(Stations):
+                self.DisplayPowerStation(i+5,station)
+        
+
             
+
             
 
             
