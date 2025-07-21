@@ -1,7 +1,7 @@
 
 from PowerStation import PowerStationC
 from Board import BoardC
-
+from Player import PlayerC
 class UserInterfaceC:
 
     def RequestPlayers(self) -> int:
@@ -77,6 +77,45 @@ class UserInterfaceC:
                 self.DisplayPowerStation(i+5,station)
         
 
+    def ChooseStationToAuction(self, market: list[dict], player_name: str) -> dict:
+        print(f"\n{player_name}, choose a Power Station to auction.")
+        valid_ids = [str(station['id']) for station in market]
+        
+        while True:
+            choice = input(f"Enter the ID of the station ({', '.join(valid_ids)}): ")
+            if choice in valid_ids:
+                for station in market:
+                    if str(station['id']) == choice:
+                        return station
+            print("Invalid ID. Please choose a station from the current market.")
+
+    def GetAuctionBid(self, station: dict, current_bid: int, high_bidder_name: str, player: PlayerC) -> int | None:
+        print(f"\n--- Bidding on Power Station #{station['id']} ---")
+        print(f"Current Bid: ${current_bid} (Held by: {high_bidder_name})")
+        print(f"{player.GetName()}, you have ${player.GetElectros()}.")
+
+        while True:
+            response = input("Enter your bid, or type 'pass': ").lower()
+            if response == 'pass':
+                print(f"{player.GetName()} passes.")
+                return None
+            
+            try:
+                new_bid = int(response)
+                if new_bid <= current_bid:
+                    print(f"Your bid must be higher than the current bid of ${current_bid}.")
+                elif new_bid > player.GetElectros():
+                    print(f"You cannot afford this bid. You only have ${player.GetElectros()}.")
+                else:
+                    return new_bid
+            except ValueError:
+                print("Invalid input. Please enter a number or 'pass'.")
+
+    def AnnounceAuctionWinner(self, winner_name: str, station_id: int, cost: int):
+        print(f"\n🎉 {winner_name} wins Power Station #{station_id} for ${cost}! 🎉")
+
+    def DisplayMessage(self, message: str):
+        print(message)
             
 
             

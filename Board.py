@@ -2,38 +2,43 @@ import json
 import math
 
 class BoardC:
-    def __init__(self,filename:str,map):
+    def __init__(self,filename:str,map,regions:list[str]):
         try:
             file = open(filename,'r')
         except FileNotFoundError:
             #TODO Ui errors
             pass
         self.__map_data = json.load(file)["maps"][map]
+        self.__regions = regions
+
         self.LoadMap()
 
 
 
+
     def LoadMap(self):
-        self.regions = self.__map_data["regions"]
-        self.city_ids = [city["id"] for city in self.__map_data["cities"]]
+        self.city_ids = [city["id"] for city in self.__map_data["cities"] if city["region"] in self.__regions]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
         self.indexes_to_cities = {i:city_id for i,city_id in enumerate(self.city_ids)}
-
-        self.cityIds_to_CityClass = {city["id"]:City(city["id"],i,city["region"]) for i,city in enumerate(self.__map_data["cities"])}
+        self.cityIds_to_CityClass = {city["id"]:City(city["id"],i,city["region"]) for i,city in enumerate(self.__map_data["cities"]) if city["region"] in self.__regions}
         self.number_of_cities = len(self.city_ids)
-
         self.adjancency_matrix = [[math.inf for _ in range( self.number_of_cities) ] for _ in range(self.number_of_cities)]
         
         # Populate adjanceny matrix
         for city in self.__map_data["cities"]:
+            if city["region"] not in self.__regions:
+                continue
             source_id = city["id"]
             source_index = self.city_to_indexes[source_id]
+
             for connection_id,cost in city["connections"].items():
-                connection_index = self.city_to_indexes[connection_id]
-                
-                self.adjancency_matrix[source_index][connection_index] = cost
-                # Undirected so mirror
-                self.adjancency_matrix[connection_index][source_index] = cost
+                # Check if the connected city is actually on the board before proceeding
+                if connection_id in self.city_to_indexes:
+                    connection_index = self.city_to_indexes[connection_id]
+                    
+                    self.adjancency_matrix[source_index][connection_index] = cost
+                    # Undirected so mirror
+                    self.adjancency_matrix[connection_index][source_index] = cost
 
 
     def CheckConnectionCost(self,Source_id:str,Connection_id:str) -> int:
@@ -83,7 +88,7 @@ class City:
         self.Region = Region
     def PlayerBuyCity(self,Electros,PlayerName):
         if self.CityIsAvailable(PlayerName):
-            Cost = len(self.__PlayersOwn + 2) * 5 
+            Cost = (len(self.__PlayersOwn)+2) * 5 
             if Cost > Electros:
                 raise ValueError # TODO Create an insuffcient funds error
             else:
@@ -112,5 +117,5 @@ class City:
 
 if __name__ == "__main__":   
     B = BoardC('board.JSON',0)
-    print(B.DjkstrasSearch(B.city_to_indexes['erfurt'],"Luca",B.city_to_indexes['frankfurt']))
-
+    B.cityIds_to_CityClass["emden"].PlayerBuyCity(20,"Luca")
+    print(B.cityIds_to_CityClass["emden"].CityIsAvailable("maya"))

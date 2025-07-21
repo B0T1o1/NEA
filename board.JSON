@@ -1,431 +1,297 @@
 {
     "maps": [
         {
-            "map_name": "Power Grid: Germany",
-            "number_of_regions": 6,
+            "map_name": "Power Grid: Germany (Custom Variant)",
             "regions": [
-                {"name": "Light Blue", "color": "#ADD8E6"},
-                {"name": "Red", "color": "#FF0000"},
-                {"name": "Green", "color": "#008000"},
-                {"name": "Yellow", "color": "#FFFF00"},
-                {"name": "Purple", "color": "#800080"},
-                {"name": "Brown", "color": "#A52A2A"}
+                {"name": "Light Blue", "color": "#a8d8ea"},
+                {"name": "Red", "color": "#d9534f"},
+                {"name": "Green", "color": "#a5d6a7"},
+                {"name": "Yellow", "color": "#fff176"},
+                {"name": "Purple", "color": "#ba68c8"},
+                {"name": "Brown", "color": "#bcaaa4"}
             ],
             "cities": [
                 {
-                    "id": "emden",
-                    "name": "Emden",
+                    "id": "flensburg",
+                    "name": "Flensburg",
                     "region": "Light Blue",
-                    "connections": {
-                        "oldenburg": 8
-                    }
+                    "connections": { "kiel": 4 }
+                },
+                {
+                    "id": "kiel",
+                    "name": "Kiel",
+                    "region": "Light Blue",
+                    "connections": { "flensburg": 4, "lubeck": 4 }
+                },
+                {
+                    "id": "cuxhaven",
+                    "name": "Cuxhaven",
+                    "region": "Light Blue",
+                    "connections": { "wilhelmshaven": 11, "hamburg": 8 }
+                },
+                {
+                    "id": "wilhelmshaven",
+                    "name": "Wilhelmshaven",
+                    "region": "Light Blue",
+                    "connections": { "cuxhaven": 11, "bremen": 14, "osnabruck": 11 }
                 },
                 {
                     "id": "bremen",
                     "name": "Bremen",
                     "region": "Light Blue",
-                    "connections": {
-                        "oldenburg": 4,
-                        "hamburg": 8,
-                        "hannover": 9,
-                        "osnabruck": 7
-                    }
-                },
-                {
-                    "id": "oldenburg",
-                    "name": "Oldenburg",
-                    "region": "Light Blue",
-                    "connections": {
-                        "emden": 8,
-                        "bremen": 4,
-                        "osnabruck": 6
-                    }
+                    "connections": { "wilhelmshaven": 14, "hamburg": 11, "hannover": 10, "osnabruck": 7 }
                 },
                 {
                     "id": "hamburg",
                     "name": "Hamburg",
                     "region": "Light Blue",
-                    "connections": {
-                        "bremen": 8,
-                        "rostock": 10,
-                        "berlin": 14,
-                        "hannover": 10
-                    }
+                    "connections": { "cuxhaven": 8, "lubeck": 6, "bremen": 11, "schwerin": 8, "hannover": 17 }
+                },
+                {
+                    "id": "lubeck",
+                    "name": "Lübeck",
+                    "region": "Red",
+                    "connections": { "kiel": 4, "hamburg": 6, "rostock": 6, "schwerin": 4 }
+                },
+                {
+                    "id": "stralsund",
+                    "name": "Stralsund",
+                    "region": "Red",
+                    "connections": { "rostock": 19, "berlin": 15 }
                 },
                 {
                     "id": "rostock",
                     "name": "Rostock",
-                    "region": "Light Blue",
-                    "connections": {
-                        "hamburg": 10,
-                        "berlin": 13
-                    }
+                    "region": "Red",
+                    "connections": { "lubeck": 6, "schwerin": 6, "stralsund": 19 }
+                },
+                {
+                    "id": "schwerin",
+                    "name": "Schwerin",
+                    "region": "Red",
+                    "connections": { "hamburg": 8, "lubeck": 4, "rostock": 6, "berlin": 19, "magdeburg": 16 }
                 },
                 {
                     "id": "berlin",
                     "name": "Berlin",
-                    "region": "Light Blue",
-                    "connections": {
-                        "hamburg": 14,
-                        "rostock": 13,
-                        "leipzig": 10,
-                        "magdeburg": 10
-                    }
+                    "region": "Red",
+                    "connections": { "stralsund": 15, "schwerin": 19, "magdeburg": 10, "frankfurt_o": 6, "dresden": 21, "leipzig": 10, "halle": 17 }
                 },
                 {
                     "id": "magdeburg",
                     "name": "Magdeburg",
-                    "region": "Light Blue",
-                    "connections": {
-                        "berlin": 10,
-                        "leipzig": 8,
-                        "hannover": 7,
-                        "braunschweig": 5
-                    }
-                },
-                {
-                    "id": "braunschweig",
-                    "name": "Braunschweig",
-                    "region": "Light Blue",
-                    "connections": {
-                        "magdeburg": 5,
-                        "hannover": 3,
-                        "kassel": 7,
-                        "goettingen": 6
-                    }
-                },
-                {
-                    "id": "hannover",
-                    "name": "Hannover",
                     "region": "Red",
-                    "connections": {
-                        "bremen": 9,
-                        "hamburg": 10,
-                        "magdeburg": 7,
-                        "braunschweig": 3,
-                        "kassel": 6,
-                        "osnabruck": 7
-                    }
+                    "connections": { "schwerin": 16, "berlin": 10, "halle": 11, "leipzig": 15, "braunschweig": 5, "hannover": 19 }
+                },
+                {
+                    "id": "duisburg",
+                    "name": "Duisburg",
+                    "region": "Green",
+                    "connections": { "essen": 2, "dusseldorf": 4 }
                 },
                 {
                     "id": "osnabruck",
                     "name": "Osnabrück",
-                    "region": "Red",
-                    "connections": {
-                        "oldenburg": 6,
-                        "bremen": 7,
-                        "hannover": 7,
-                        "bielefeld": 5,
-                        "dortmund": 5,
-                        "muenster": 3
-                    }
+                    "region": "Green",
+                    "connections": { "wilhelmshaven": 11, "bremen": 7, "munster": 7, "kassel": 20, "hannover": 16 }
                 },
                 {
-                    "id": "muenster",
+                    "id": "munster",
                     "name": "Münster",
-                    "region": "Red",
-                    "connections": {
-                        "osnabruck": 3,
-                        "dortmund": 4,
-                        "essen": 4,
-                        "duesseldorf": 6
-                    }
+                    "region": "Green",
+                    "connections": { "osnabruck": 7, "dortmund": 6 }
                 },
                 {
                     "id": "dortmund",
                     "name": "Dortmund",
-                    "region": "Red",
-                    "connections": {
-                        "osnabruck": 5,
-                        "muenster": 4,
-                        "essen": 1,
-                        "duesseldorf": 2,
-                        "koeln": 3,
-                        "bielefeld": 5
-                    }
+                    "region": "Green",
+                    "connections": { "munster": 6, "essen": 5, "kassel": 18 }
                 },
                 {
                     "id": "essen",
                     "name": "Essen",
-                    "region": "Red",
-                    "connections": {
-                        "muenster": 4,
-                        "dortmund": 1,
-                        "duesseldorf": 1,
-                        "koeln": 3
-                    }
+                    "region": "Green",
+                    "connections": { "duisburg": 2, "dortmund": 5, "dusseldorf": 2, "koln": 10 }
                 },
                 {
-                    "id": "duesseldorf",
+                    "id": "dusseldorf",
                     "name": "Düsseldorf",
-                    "region": "Red",
-                    "connections": {
-                        "muenster": 6,
-                        "dortmund": 2,
-                        "essen": 1,
-                        "koeln": 1,
-                        "aachen": 4
-                    }
+                    "region": "Green",
+                    "connections": { "duisburg": 4, "essen": 2, "koln": 7, "aachen": 9 }
                 },
                 {
-                    "id": "koeln",
+                    "id": "koln",
                     "name": "Köln",
-                    "region": "Red",
-                    "connections": {
-                        "dortmund": 3,
-                        "essen": 3,
-                        "duesseldorf": 1,
-                        "aachen": 4,
-                        "trier": 5,
-                        "frankfurt": 5,
-                        "bielefeld": 9
-                    }
+                    "region": "Green",
+                    "connections": { "essen": 10, "dusseldorf": 7, "aachen": 7, "trier": 20 }
                 },
                 {
                     "id": "aachen",
                     "name": "Aachen",
-                    "region": "Red",
-                    "connections": {
-                        "duesseldorf": 4,
-                        "koeln": 4,
-                        "trier": 6
-                    }
-                },
-                {
-                    "id": "bielefeld",
-                    "name": "Bielefeld",
-                    "region": "Red",
-                    "connections": {
-                        "osnabruck": 5,
-                        "hannover": 7,
-                        "kassel": 6,
-                        "dortmund": 5,
-                        "koeln": 9
-                    }
-                },
-                {
-                    "id": "kassel",
-                    "name": "Kassel",
                     "region": "Green",
-                    "connections": {
-                        "braunschweig": 7,
-                        "hannover": 6,
-                        "bielefeld": 6,
-                        "frankfurt": 5,
-                        "goettingen": 4,
-                        "erfurt": 7
-                    }
-                },
-                {
-                    "id": "goettingen",
-                    "name": "Göttingen",
-                    "region": "Green",
-                    "connections": {
-                        "braunschweig": 6,
-                        "kassel": 4,
-                        "erfurt": 6
-                    }
-                },
-                {
-                    "id": "erfurt",
-                    "name": "Erfurt",
-                    "region": "Green",
-                    "connections": {
-                        "goettingen": 6,
-                        "kassel": 7,
-                        "leipzig": 6,
-                        "dresden": 10,
-                        "nuernberg": 8,
-                        "wuerzburg": 7
-                    }
-                },
-                {
-                    "id": "leipzig",
-                    "name": "Leipzig",
-                    "region": "Green",
-                    "connections": {
-                        "berlin": 10,
-                        "magdeburg": 8,
-                        "erfurt": 6,
-                        "dresden": 5
-                    }
-                },
-                {
-                    "id": "dresden",
-                    "name": "Dresden",
-                    "region": "Green",
-                    "connections": {
-                        "leipzig": 5,
-                        "erfurt": 10,
-                        "nuernberg": 13
-                    }
-                },
-                {
-                    "id": "frankfurt",
-                    "name": "Frankfurt",
-                    "region": "Green",
-                    "connections": {
-                        "koeln": 5,
-                        "kassel": 5,
-                        "wuerzburg": 4,
-                        "stuttgart": 5,
-                        "mannheim": 3,
-                        "saarbruecken": 4,
-                        "trier": 5
-                    }
+                    "connections": { "dusseldorf": 9, "koln": 7, "trier": 19 }
                 },
                 {
                     "id": "trier",
                     "name": "Trier",
                     "region": "Green",
-                    "connections": {
-                        "koeln": 5,
-                        "aachen": 6,
-                        "frankfurt": 5,
-                        "saarbruecken": 3
-                    }
+                    "connections": { "koln": 20, "aachen": 19, "saarbrucken": 11, "mainz": 21, "frankfurt_m": 18 }
                 },
                 {
-                    "id": "saarbruecken",
+                    "id": "hannover",
+                    "name": "Hannover",
+                    "region": "Yellow",
+                    "connections": { "hamburg": 17, "bremen": 10, "osnabruck": 16, "magdeburg": 19, "braunschweig": 3, "gottingen": 6, "kassel": 15 }
+                },
+                {
+                    "id": "braunschweig",
+                    "name": "Braunschweig",
+                    "region": "Yellow",
+                    "connections": { "hannover": 3, "magdeburg": 5, "gottingen": 6 }
+                },
+                {
+                    "id": "gottingen",
+                    "name": "Göttingen",
+                    "region": "Yellow",
+                    "connections": { "hannover": 6, "braunschweig": 6, "kassel": 5, "erfurt": 15 }
+                },
+                {
+                    "id": "kassel",
+                    "name": "Kassel",
+                    "region": "Yellow",
+                    "connections": { "osnabruck": 20, "hannover": 15, "gottingen": 5, "dortmund": 18, "frankfurt_m": 8, "fulda": 8, "erfurt": 8 }
+                },
+                {
+                    "id": "fulda",
+                    "name": "Fulda",
+                    "region": "Yellow",
+                    "connections": { "kassel": 8, "erfurt": 13, "wurzburg": 11, "frankfurt_m": 8 }
+                },
+                {
+                    "id": "erfurt",
+                    "name": "Erfurt",
+                    "region": "Yellow",
+                    "connections": { "gottingen": 15, "kassel": 8, "halle": 6, "leipzig": 13, "fulda": 13, "wurzburg": 19 }
+                },
+                {
+                    "id": "halle",
+                    "name": "Halle",
+                    "region": "Yellow",
+                    "connections": { "magdeburg": 11, "berlin": 17, "leipzig": 0, "erfurt": 6 }
+                },
+                {
+                    "id": "leipzig",
+                    "name": "Leipzig",
+                    "region": "Yellow",
+                    "connections": { "magdeburg": 15, "halle": 0, "berlin": 10, "dresden": 13, "erfurt": 13, "chemnitz": 12 }
+                },
+                {
+                    "id": "dresden",
+                    "name": "Dresden",
+                    "region": "Yellow",
+                    "connections": { "berlin": 21, "leipzig": 13, "chemnitz": 11 }
+                },
+                {
+                    "id": "chemnitz",
+                    "name": "Chemnitz",
+                    "region": "Yellow",
+                    "connections": { "leipzig": 12, "dresden": 11, "nurnberg": 18 }
+                },
+                {
+                    "id": "frankfurt_o",
+                    "name": "Frankfurt/O",
+                    "region": "Yellow",
+                    "connections": { "berlin": 6 }
+                },
+                {
+                    "id": "saarbrucken",
                     "name": "Saarbrücken",
-                    "region": "Green",
-                    "connections": {
-                        "trier": 3,
-                        "frankfurt": 4,
-                        "mannheim": 3,
-                        "karlsruhe": 4
-                    }
+                    "region": "Purple",
+                    "connections": { "trier": 11, "mannheim": 17, "karlsruhe": 16 }
+                },
+                {
+                    "id": "mainz",
+                    "name": "Mainz",
+                    "region": "Purple",
+                    "connections": { "frankfurt_m": 3, "mannheim": 10, "trier": 21 }
+                },
+                {
+                    "id": "frankfurt_m",
+                    "name": "Frankfurt/M",
+                    "region": "Purple",
+                    "connections": { "kassel": 8, "fulda": 8, "wurzburg": 13, "mannheim": 10, "mainz": 3, "trier": 18 }
                 },
                 {
                     "id": "mannheim",
                     "name": "Mannheim",
-                    "region": "Green",
-                    "connections": {
-                        "frankfurt": 3,
-                        "saarbruecken": 3,
-                        "karlsruhe": 2,
-                        "stuttgart": 4
-                    }
+                    "region": "Purple",
+                    "connections": { "saarbrucken": 17, "mainz": 10, "frankfurt_m": 10, "wurzburg": 16, "karlsruhe": 6, "stuttgart": 6 }
                 },
                 {
-                    "id": "wuerzburg",
+                    "id": "wurzburg",
                     "name": "Würzburg",
-                    "region": "Yellow",
-                    "connections": {
-                        "erfurt": 7,
-                        "frankfurt": 4,
-                        "nuernberg": 4,
-                        "stuttgart": 7
-                    }
-                },
-                {
-                    "id": "nuernberg",
-                    "name": "Nürnberg",
-                    "region": "Yellow",
-                    "connections": {
-                        "erfurt": 8,
-                        "dresden": 13,
-                        "wuerzburg": 4,
-                        "muenchen": 9,
-                        "stuttgart": 10
-                    }
-                },
-                {
-                    "id": "stuttgart",
-                    "name": "Stuttgart",
-                    "region": "Yellow",
-                    "connections": {
-                        "frankfurt": 5,
-                        "mannheim": 4,
-                        "wuerzburg": 7,
-                        "nuernberg": 10,
-                        "muenchen": 12,
-                        "freiburg": 8,
-                        "karlsruhe": 3
-                    }
+                    "region": "Purple",
+                    "connections": { "frankfurt_m": 13, "fulda": 11, "erfurt": 19, "mannheim": 16, "stuttgart": 12, "nurnberg": 8 }
                 },
                 {
                     "id": "karlsruhe",
                     "name": "Karlsruhe",
-                    "region": "Yellow",
-                    "connections": {
-                        "saarbruecken": 4,
-                        "mannheim": 2,
-                        "stuttgart": 3,
-                        "freiburg": 5
-                    }
+                    "region": "Purple",
+                    "connections": { "saarbrucken": 16, "mannheim": 6, "stuttgart": 5, "freiburg": 7 }
+                },
+                {
+                    "id": "stuttgart",
+                    "name": "Stuttgart",
+                    "region": "Purple",
+                    "connections": { "mannheim": 6, "karlsruhe": 5, "wurzburg": 12, "nurnberg": 19, "ulm": 10, "augsburg": 15, "konstanz": 15, "freiburg": 16 }
                 },
                 {
                     "id": "freiburg",
                     "name": "Freiburg",
-                    "region": "Yellow",
-                    "connections": {
-                        "karlsruhe": 5,
-                        "stuttgart": 8,
-                        "konstanz": 6
-                    }
+                    "region": "Purple",
+                    "connections": { "karlsruhe": 7, "stuttgart": 16, "konstanz": 9 }
                 },
                 {
                     "id": "konstanz",
                     "name": "Konstanz",
-                    "region": "Yellow",
-                    "connections": {
-                        "freiburg": 6,
-                        "muenchen": 16
-                    }
+                    "region": "Purple",
+                    "connections": { "freiburg": 9, "stuttgart": 15, "augsburg": 17 }
                 },
                 {
-                    "id": "muenchen",
-                    "name": "München",
-                    "region": "Purple",
-                    "connections": {
-                        "nuernberg": 9,
-                        "stuttgart": 12,
-                        "konstanz": 16,
-                        "augsburg": 3,
-                        "regensburg": 7,
-                        "passau": 10
-                    }
+                    "id": "nurnberg",
+                    "name": "Nürnberg",
+                    "region": "Brown",
+                    "connections": { "chemnitz": 18, "wurzburg": 8, "stuttgart": 19, "augsburg": 13, "regensburg": 12, "munchen": 18 }
+                },
+                {
+                    "id": "ulm",
+                    "name": "Ulm",
+                    "region": "Brown",
+                    "connections": { "stuttgart": 10, "augsburg": 6 }
                 },
                 {
                     "id": "augsburg",
                     "name": "Augsburg",
-                    "region": "Purple",
-                    "connections": {
-                        "muenchen": 3,
-                        "regensburg": 8
-                    }
+                    "region": "Brown",
+                    "connections": { "ulm": 6, "stuttgart": 15, "konstanz": 17, "munchen": 6, "regensburg": 10, "nurnberg": 13 }
                 },
                 {
                     "id": "regensburg",
                     "name": "Regensburg",
-                    "region": "Purple",
-                    "connections": {
-                        "muenchen": 7,
-                        "augsburg": 8,
-                        "passau": 5,
-                        "wiesbaden": 10
-                    }
+                    "region": "Brown",
+                    "connections": { "nurnberg": 12, "augsburg": 10, "munchen": 12, "passau": 14 }
+                },
+                {
+                    "id": "munchen",
+                    "name": "München",
+                    "region": "Brown",
+                    "connections": { "nurnberg": 18, "regensburg": 12, "augsburg": 6, "passau": 12 }
                 },
                 {
                     "id": "passau",
                     "name": "Passau",
-                    "region": "Purple",
-                    "connections": {
-                        "muenchen": 10,
-                        "regensburg": 5,
-                        "wiesbaden": 12
-                    }
-                },
-                {
-                    "id": "wiesbaden",
-                    "name": "Wiesbaden",
-                    "region": "Purple",
-                    "connections": {
-                        "regensburg": 10,
-                        "passau": 12,
-                        "hamburg": 19
-                    }
+                    "region": "Brown",
+                    "connections": { "regensburg": 14, "munchen": 12 }
                 }
             ]
         },
