@@ -2,7 +2,7 @@
 class PowerStationC:
     def __init__(self,Value:int,FuelType:chr,FuelAmount:int,NumberOfCitiesPowered:int):
         self.__Value = Value
-        self.__Fuel_To_word = { 'C':'Coal', 'O':'Oil', 'H':'Hybrid', 'G': 'Garbadge', 'N':'Nuclear', 'R':'Renewable'}
+        self.__Fuel_To_word = { 'C':'Coal', 'O':'Oil', 'H':'Hybrid', 'G': 'Garbage', 'N':'Nuclear', 'R':'Renewable'}
         self.__FuelType = FuelType
         self.__FuelAmount = FuelAmount
         self.__NumberOfCitiesPowered = NumberOfCitiesPowered

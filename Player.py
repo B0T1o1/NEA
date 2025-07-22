@@ -1,13 +1,11 @@
-from UI import UserInterfaceC
 from PowerStation import PowerStationC
 
 class PlayerC:
-    def __init__(self,Electros:int,UI:UserInterfaceC):
+    def __init__(self,Electros:int,name):
         self.__Electros = Electros
         self.__PowerStations: list[PowerStationC] = []
         self.__cities: list[str] = []
-        self.__UI = UI
-        self.__name = self.__UI.GetName()
+        self.__name = name
 
 
     def GetPowerStations(self) -> list:
@@ -26,7 +24,7 @@ class PlayerC:
     def GetCities(self) -> list:
         return self.__cities
     
-    def AddPowerstation(self,PowerStation:PowerStationC):
+    def AddPowerstation(self,PowerStation:PowerStationC,cost):
         while len(self.__PowerStations) == 3:
             remove = self.__UI.RemovePowerStation(self.__PowerStations)
             for i,Station in enumerate(self.__PowerStations):
@@ -34,6 +32,7 @@ class PlayerC:
                     self.__PowerStations[i] = PowerStation
         if len(self.__PowerStations) != 3:
             self.__PowerStations.append(PowerStation)
+        self.__Electros -= cost
         return
     
 

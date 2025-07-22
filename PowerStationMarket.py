@@ -12,10 +12,11 @@ class PS_Market:
         self.__PluggedPowerStations,self.__UnpluggedPowerStations = self.ExtractStationsFromFile(PowerStationsFile)
         random.shuffle(self.__PluggedPowerStations)
         self.__PluggedPowerStations = self.RemovePowerStation(NofPlayers,PLUGGED)
-        self.__Market = self.__PluggedPowerStations[:8]
+        self.__Market:list[PowerStationC] = self.__PluggedPowerStations[:8]
+        self.__Market.sort()
         self.__Deck = self.__PluggedPowerStations[8:-1]
         self.__Cover = self.__PluggedPowerStations[-1]
-        self.__Deck.append(self.RemovePowerStation(NofPlayers,UNPLUGGED))
+        self.__Deck += self.RemovePowerStation(NofPlayers,UNPLUGGED)
         random.shuffle(self.__Deck)
         self.__Deck.append(self.__Cover)
         self.__Deck.append(Stage3(0,'',0,0))
@@ -50,14 +51,25 @@ class PS_Market:
         else:
             return self.__Market
         
-    def BuyPowerStation(self,index:int):
-        if self.__stage != 3:
-            if 0 <= index < 4:
-                Station = self.__Market.pop(index)
-                self.__Market.append(self.__Deck.pop(0))
-                self.__Market.sort()
+    def BuyPowerStation(self,Station:PowerStationC):
+
+        for index, station in enumerate(self.__Market):
+            if station.GetValue() == Station.GetValue():
+                if self.__stage != 3:
+                    if 0 <= index < 4:
+                        self.__Market.pop(index)
+                        self.__Market.append(self.__Deck.pop(0))
+                        self.__Market.sort()
+                else:
+                    self.__Market.pop(index)
+                    self.__Market.append(self.__Deck.pop(0))
+                    self.__Market.sort()                
                 return Station
+    def GetDeck(self):
+        return self.__Deck
+        
     
+
     
 
 
@@ -87,3 +99,6 @@ class Stage3(PowerStationC):
     
 
 
+if __name__ == "__main__":
+    p = PS_Market("stations.JSON",3)
+    print(p.GetDeck())

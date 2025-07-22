@@ -1,7 +1,7 @@
-
 from PowerStation import PowerStationC
 from Board import BoardC
 from Player import PlayerC
+
 class UserInterfaceC:
 
     def RequestPlayers(self) -> int:
@@ -47,11 +47,11 @@ class UserInterfaceC:
         print(f"{Player} Have chosen {Choice}")
         return Choice
     
-    def RemovePowerStation(self, PowerStations:list[PowerStationC]):
+    def RemovePowerStation(self, PowerStations:list[PowerStationC],PlayerName):
         Valid = False
         while not Valid:
             try:
-                print('Please choose a Power station to remove:')
+                print(f'{PlayerName} Please choose a Power station to remove:')
                 for number, PStation in enumerate(PowerStations):
                     self.DisplayPowerStation(number +1,PStation)
                 print('Please input the value of the powerstation you would like to remove:')
@@ -63,7 +63,7 @@ class UserInterfaceC:
                 return choice
     
     def DisplayPowerStation(self,Position, PStation:PowerStationC):
-        print(f'{Position}. \nValue:{PStation.GetValue()}\nType:{PStation.GetFuelType}\nNumber of Resource to Power:{PStation.GetFuelAmount()}\nNumber Of Cities Powered:{PStation.GetNumberOfCitiesPowered()}' )
+        print(f'{Position}. \nValue:{PStation.GetValue()}\nType:{PStation.GetFuelType()}\nNumber of Resource to Power:{PStation.GetFuelAmount()}\nNumber Of Cities Powered:{PStation.GetNumberOfCitiesPowered()}' )
 
     def DisplayCurrentMarket(self,discount:bool, Stations:list[PowerStationC]):
         print("This is the current market:")
@@ -77,20 +77,20 @@ class UserInterfaceC:
                 self.DisplayPowerStation(i+5,station)
         
 
-    def ChooseStationToAuction(self, market: list[dict], player_name: str) -> dict:
+    def ChooseStationToAuctionFirst(self, market: list[PowerStationC], player_name: str) -> PowerStationC:
         print(f"\n{player_name}, choose a Power Station to auction.")
-        valid_ids = [str(station['id']) for station in market]
+        valid_ids = [str(station.GetValue()) for station in market]
         
         while True:
-            choice = input(f"Enter the ID of the station ({', '.join(valid_ids)}): ")
+            choice = input(f"Enter the Value of the station ({', '.join(valid_ids)}): ")
             if choice in valid_ids:
                 for station in market:
-                    if str(station['id']) == choice:
+                    if str(station.GetValue()) == choice:
                         return station
             print("Invalid ID. Please choose a station from the current market.")
 
-    def GetAuctionBid(self, station: dict, current_bid: int, high_bidder_name: str, player: PlayerC) -> int | None:
-        print(f"\n--- Bidding on Power Station #{station['id']} ---")
+    def GetAuctionBid(self, station: PowerStationC, current_bid: int, high_bidder_name: str, player: PlayerC) -> int | None:
+        print(f"\n--- Bidding on Power Station #{station.GetValue()} ---")
         print(f"Current Bid: ${current_bid} (Held by: {high_bidder_name})")
         print(f"{player.GetName()}, you have ${player.GetElectros()}.")
 
