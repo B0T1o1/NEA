@@ -63,7 +63,7 @@ class UserInterfaceC:
                 return choice
     
     def DisplayPowerStation(self,Position, PStation:PowerStationC):
-        print(f'{Position}. \nValue:{PStation.GetValue()}\nType:{PStation.GetFuelType()}\nNumber of Resource to Power:{PStation.GetFuelAmount()}\nNumber Of Cities Powered:{PStation.GetNumberOfCitiesPowered()}' )
+        print(f'{Position}. \nValue:{PStation.GetValue()}\nType:{PStation.GetFuelWord()}\nNumber of Resource to Power:{PStation.GetFuelAmount()}\nNumber Of Cities Powered:{PStation.GetNumberOfCitiesPowered()}' )
 
     def DisplayCurrentMarket(self,discount:bool, Stations:list[PowerStationC]):
         print("This is the current market:")
@@ -129,11 +129,60 @@ class UserInterfaceC:
 
     def DisplayMessage(self, message: str):
         print(message)
-            
+    
 
-            
+    def DisplayFuelCosts(self,
+        coal_costs: list[int],
+        nuclear_costs: list[int],
+        garbage_costs: list[int],
+        oil_costs: list[int]
+    ) -> None:
+        """
+        Displays the cumulative costs of different fuel types in a formatted table.
 
-            
+        This function takes four lists of integers, where each list represents the
+        cumulative cost of purchasing 1, 2, 3, etc., units of a specific fuel.
+        It then prints a formatted table to the console.
+
+        Args:
+            coal_costs: A list of cumulative costs for coal.
+            nuclear_costs: A list of cumulative costs for nuclear fuel.
+            garbage_costs: A list of cumulative costs for garbage.
+            oil_costs: A list of cumulative costs for oil.
+        """
+        # Find the maximum quantity available across all fuel types to set the table height
+        try:
+            max_quantity = max(len(coal_costs), len(nuclear_costs), len(garbage_costs), len(oil_costs))
+        except ValueError:
+            print("All cost lists are empty. No data to display.")
+            return
+
+        print(f"{'Quantity':<10} | {'Coal':<8} | {'Nuclear':<8} | {'Garbage':<8} | {'Oil':<8}")
+        print("-" * 62) # Separator line
+
+        # Iterate through each quantity level up to the maximum
+        for i in range(max_quantity):
+            quantity = i + 1
+
+            # Safely get the cost for each fuel type, or 'N/A' if that quantity is not available
+            coal_cost = str(coal_costs[i]) if i < len(coal_costs) else 'N/A'
+            nuclear_cost = str(nuclear_costs[i]) if i < len(nuclear_costs) else 'N/A'
+            garbage_cost = str(garbage_costs[i]) if i < len(garbage_costs) else 'N/A'
+            oil_cost = str(oil_costs[i]) if i < len(oil_costs) else 'N/A'
+
+            # Print the formatted row with costs
+            print(f"{quantity:<10} | {coal_cost:<8} | {nuclear_cost:<8} | {garbage_cost:<8} | {oil_cost:<8}")
+    def GetAmountOfFuelType(self):
+        
+
+                
+if __name__ == "__main__":
+    ui = UserInterfaceC()
+    ui.DisplayFuelCosts([1, 2, 3, 5, 7, 9, 12, 15, 18, 22, 26, 30, 35, 40, 45, 51, 57, 63, 70, 77, 84, 92, 100, 108],[3, 6, 9, 13, 17, 21, 26, 31, 36, 42, 48, 54, 61, 68, 75, 83, 91, 99],[6, 12, 18, 25, 32, 39, 47, 55, 63],[14, 30])
+
+                
+
+                
 
 
 

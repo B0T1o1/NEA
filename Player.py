@@ -6,11 +6,24 @@ class PlayerC:
         self.__PowerStations: list[PowerStationC] = []
         self.__cities: list[str] = []
         self.__name = name
+        self.__Resources =  { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
 
 
     def GetPowerStations(self) -> list:
         self.__PowerStations.sort()
         return self.__PowerStations
+    
+    def GetResourceSpace(self) -> dict:
+        available =  { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
+        for PowerStation in self.__PowerStations:
+            available[PowerStation.GetFuelType()] += PowerStation.GetFuelAmount() * 2
+        for type in  ['C','O','H','G','N','R']:
+            available[type] -=  self.__Resources[type]
+        return available
+
+    def addResource(self,cost):
+        pass
+
     
     def GetName(self) -> str:
         return self.__name
@@ -25,11 +38,6 @@ class PlayerC:
         return self.__cities
     
     def AddPowerstation(self,PowerStation:PowerStationC,cost):
-        while len(self.__PowerStations) == 3:
-            remove = self.__UI.RemovePowerStation(self.__PowerStations)
-            for i,Station in enumerate(self.__PowerStations):
-                if remove == Station.GetValue():
-                    self.__PowerStations[i] = PowerStation
         if len(self.__PowerStations) != 3:
             self.__PowerStations.append(PowerStation)
         self.__Electros -= cost
@@ -51,7 +59,12 @@ class PlayerC:
             
 
 
-
+if __name__ ==  "__main__":
+    p = PowerStationC(3,'O',2,1)
+    player = PlayerC(50,"jane")
+    player.AddPowerstation(p,3)
+    player.add
+    print(player.GetResourceSpace())
     
 
 

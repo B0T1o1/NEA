@@ -25,6 +25,57 @@ class R_Market:
         if self.Garbage > 12:
             self.Garbage = 12
 
+    def GetCostOfCoal(self) -> list[int]:
+        coal = self.Coal
+        Quantity = coal
+        costs:list[int] = []
+        Cost = 0
+        while Quantity != 0:
+                Cost += 8 - ((coal - 1)// 3)
+                coal -= 1
+                Quantity -= 1
+                costs.append(Cost)
+        return costs
+    
+    def GetCostOfOil(self) -> list[int]:
+        Oil = self.Oil
+        Quantity = Oil
+        costs:list[int] = []
+        Cost = 0
+        while Quantity != 0:
+                Cost += 8 - ((Oil - 1)// 3)
+                Oil -= 1
+                Quantity -= 1
+                costs.append(Cost)
+        return costs
+    def GetCostOfGarbage(self) -> list[int]:
+        Garbage = self.Garbage
+        Quantity = Garbage
+        costs:list[int] = []
+        Cost = 0
+        while Quantity != 0:
+                Cost += 8 - ((Garbage - 1)// 3)
+                Garbage -= 1
+                Quantity -= 1
+                costs.append(Cost)
+        return costs
+    
+    def GetCostOfNuclear(self) -> list[int]:
+        Nuclear = self.Nuclear
+        Quantity = Nuclear
+        costs:list[int] = []
+        Cost = 0
+        while Quantity != 0:
+            if Nuclear > 4:
+                Cost += 12 - Nuclear
+            else:
+                Cost += 10 + ((4 - Nuclear) * 2 )
+            Nuclear -= 1
+            Quantity -= 1
+            costs.append(Cost)
+
+        return costs
+
     def BuyCoal(self,Quantity):
         Cost  = 0
         if self.Coal >= Quantity:
@@ -81,4 +132,9 @@ class R_Market:
 
             
 
-    
+if __name__ == "__main__":
+    r = R_Market()
+    print(r.GetCostOfCoal())
+    print(r.GetCostOfOil())
+    print(r.GetCostOfGarbage())
+    print(r.GetCostOfNuclear())

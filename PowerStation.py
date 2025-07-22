@@ -9,8 +9,14 @@ class PowerStationC:
 
     def GetValue(self) -> int:
         return self.__Value
-    def GetFuelType(self) -> str:
+    
+    def GetFuelWord(self) -> str:
         return self.__Fuel_To_word[self.__FuelType]
+    
+    def GetFuelType(self) -> str:
+        return self.__FuelType
+        
+    
     def GetFuelAmount(self) -> int:
         return self.__FuelAmount
     def GetNumberOfCitiesPowered(self):

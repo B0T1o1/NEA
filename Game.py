@@ -16,7 +16,7 @@ class GameC:
 
     def __GameSetUp(self,BoardFile,StationFile):
         self.__NofPlayers = self.__UI.RequestPlayers()
-        self.__Players = [PlayerC(self.__STARTING_ELECTROS,self.__UI.GetName()) for i in range (0, self.__NofPlayers)]
+        self.__Players:list[PlayerC] = [PlayerC(self.__STARTING_ELECTROS,self.__UI.GetName()) for i in range (0, self.__NofPlayers)]
         self.__Round = 0
         self.__stage = 1
         self.__Players = Phase1.Random_Assignment(self.__Players)
@@ -47,6 +47,9 @@ class GameC:
     
     def __StartingRound(self):
         Phase2.First_round(self.__PowerStationMarket,self.__Players,self.__UI)
+        self.__Players = Phase1.Determine_Player_Order(self.__Players)
+        self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
+        
             
 
 
@@ -201,12 +204,28 @@ class Phase2:
             PS_Market.BuyPowerStation(station_to_auction)
             players_to_buy.remove(winner)
 
+class Phase3:
+    @staticmethod
+    def ResourceBuying(ResourceMarket:R_Market,Players:list[PlayerC],UI:UserInterfaceC):
+        UI.DisplayFuelCosts(ResourceMarket.GetCostOfCoal(),ResourceMarket.GetCostOfNuclear(),ResourceMarket.GetCostOfGarbage(),ResourceMarket.GetCostOfOil())
+        for player in Players:
+            pass
+            
+        
 
             
 
         
 
 if __name__ == '__main__':
-    G = GameC(UserInterfaceC())
+    plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
+    market = PS_Market("stations.JSON",3)
+    for player in plays:
+
+        station = market.GiveMarket()[0][0]
+        cost = station.GetValue()
+        player.AddPowerstation(market.BuyPowerStation(station),cost)
+    
+    Phase3.ResourceBuying(R_Market(),plays,UserInterfaceC())
 
 
