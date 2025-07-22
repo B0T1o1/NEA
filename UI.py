@@ -88,6 +88,19 @@ class UserInterfaceC:
                     if str(station.GetValue()) == choice:
                         return station
             print("Invalid ID. Please choose a station from the current market.")
+    
+    def ChooseStationToAuction(self, market: list[PowerStationC], player_name: str) :
+        print(f"\n{player_name}, choose a Power Station to auction.")
+        valid_ids = [str(station.GetValue()) for station in market]
+        while True:
+            choice = input(f"Enter the Value of the station ({', '.join(valid_ids)}) or type 'pass': ")
+            if choice == 'pass':
+                return None
+            if choice in valid_ids:
+                for station in market:
+                    if str(station.GetValue()) == choice:
+                        return station
+            print("Invalid ID. Please choose a station from the current market.")
 
     def GetAuctionBid(self, station: PowerStationC, current_bid: int, high_bidder_name: str, player: PlayerC) -> int | None:
         print(f"\n--- Bidding on Power Station #{station.GetValue()} ---")

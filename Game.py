@@ -70,6 +70,7 @@ class Phase1:
 class Phase2:
     @staticmethod
     def First_round(PS_Market: PS_Market, players: list[PlayerC], UI: UserInterfaceC):
+        #create copy of list to ensure do not edit actual players list
         players_to_buy = list(players)
         discount_available = True
 
@@ -86,6 +87,72 @@ class Phase2:
             UI.DisplayFutureMarket(future_market)
 
             station_to_auction = UI.ChooseStationToAuctionFirst(current_market, auction_starter.GetName())
+
+            if not station_to_auction:
+                continue
+            
+            will_consume_discount = False
+
+            if discount_available and station_to_auction.GetValue() == lowest_station.GetValue():
+                current_bid = 1
+                will_consume_discount = True
+                UI.DisplayMessage(f"The discount token is being used! The starting bid for Power Station #{station_to_auction.GetValue()} is $1.")
+            else:
+                current_bid = station_to_auction.GetValue()
+                
+            high_bidder = auction_starter
+            if not will_consume_discount:
+                 UI.DisplayMessage(f"{auction_starter.GetName()} starts the bidding for Power Station #{station_to_auction.GetValue()} at ${current_bid}.")
+
+            potential_bidders = [p for p in players_to_buy if p != auction_starter]
+            potential_bidders.append(auction_starter)
+            won = False
+            while not won:
+                for bidder in list(potential_bidders):
+                    if bidder == high_bidder:
+                        won = True
+                    else:
+                        if bidder.CheckEnoughElectros(current_bid):
+                            new_bid = UI.GetAuctionBid(station_to_auction, current_bid, high_bidder.GetName(), bidder)
+
+                            if new_bid and new_bid > current_bid:
+                                current_bid = new_bid
+                                high_bidder = bidder
+                                UI.DisplayMessage(f"{bidder.GetName()} is the new high bidder with ${current_bid}!")
+                            else:
+                                potential_bidders.remove(bidder)
+
+            winner = high_bidder
+
+            UI.AnnounceAuctionWinner(winner.GetName(), station_to_auction.GetValue(), current_bid)
+            
+            if will_consume_discount:
+                discount_available = False
+            
+            if len(winner.GetPowerStations()) == 3:
+                UI.RemovePowerStation(winner.GetPowerStations(),winner.GetName())
+            winner.AddPowerstation(station_to_auction, current_bid)
+            PS_Market.BuyPowerStation(station_to_auction)
+            players_to_buy.remove(winner)
+            
+    @staticmethod
+    def AuctionStage12(PS_Market: PS_Market, players: list[PlayerC], UI: UserInterfaceC):
+        players_to_buy = list(players)
+        discount_available = True
+
+        for auction_starter in players:
+            if auction_starter not in players_to_buy:
+                continue
+
+            UI.DisplayMessage(f"\n {auction_starter.GetName()}'s turn to start an auction\nThey have {auction_starter.GetElectros()} Electros.")
+            current_market, future_market = PS_Market.GiveMarket()
+            
+            lowest_station = current_market[0]
+            
+            UI.DisplayCurrentMarket(discount_available, current_market)
+            UI.DisplayFutureMarket(future_market)
+
+            station_to_auction = UI.ChooseStationToAuction(current_market, auction_starter.GetName())
 
             if not station_to_auction:
                 continue
@@ -133,10 +200,6 @@ class Phase2:
             winner.AddPowerstation(station_to_auction, current_bid)
             PS_Market.BuyPowerStation(station_to_auction)
             players_to_buy.remove(winner)
-            
-
-    def Auction(players):
-        pass
 
 
             

@@ -1,7 +1,3 @@
-
-
-
-
 class R_Market:
     def __init__(self):
         self.Coal = 24
