@@ -30,6 +30,7 @@ class GameC:
         self.__Board = BoardC(BoardFile, map,self.__regions)
         self.__PowerStationMarket = PS_Market(StationFile,self.__NofPlayers)
         self.__ResourceMarket = R_Market()
+        self.__UI.DisplayBoard(self.__Board)
         self.__starting_cities = self.ChooseStart()
         
 
@@ -52,6 +53,8 @@ class GameC:
         self.__Players = Phase1.Determine_Player_Order(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
         Phase3.ResourceBuying(self.__ResourceMarket,self.__Players,self.__UI)
+        Phase4.StartingRound(self,self.__starting_cities,self.__Board)
+        Phase4.BuyCities(self.__Players,self.__Board,self.__UI)
         
             
 
@@ -178,9 +181,42 @@ class Phase3:
                 else:
                     pass # TODO
                     
+class Phase4:
+    @staticmethod
+    def StartingRound(players:list[PlayerC],startingCities,Board:BoardC):
+        for player,city in startingCities.items():
+            if player.CheckEnoughElectros(10):
+                player.AddSourceCity(city)
+                Board.cityIds_to_CityClass[city].PlayerBuyCity(player.GetName())
+                
+                
+    @staticmethod
+    def BuyCities(players:list[PlayerC],board:BoardC,UI:UserInterfaceC):
+        for player in reversed(players):
+            passed = False
+            while not passed:
+                UI.DisplayBoard(board)
+                costs = [board.CheckConnectionCost(player.GetSourceCity(), city_id) for city_id in board.city_ids]
+                choice_city = UI.GetCity(board.city_ids,costs,player.GetName())
+                
+                if choice_city:
+
+                    cost_of_choice = board.CheckConnectionCost(player.GetSourceCity(), choice_city)
+
+
+
+                    if board.cityIds_to_CityClass[choice_city].CityIsAvailable(player.GetName()):
+                        cost_of_choice += board.cityIds_to_CityClass[choice_city].GetCostInCity()
+                        if player.CheckEnoughElectros(cost_of_choice):
+                            board.cityIds_to_CityClass[choice_city].PlayerBuyCity(player.GetName())
+                            player.BuyCity(choice_city,cost_of_choice)
+                else:
+                    passed = True
+                
+                
+
 
             
-
             
 
 
@@ -196,8 +232,15 @@ if __name__ == '__main__':
             player.BuyPowerstation(market.BuyPowerStation(station),cost)
         
         Phase3.ResourceBuying(R_Market(),plays,UserInterfaceC())
+    
+    def Phase4Test():
+        plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
+        B = BoardC('board.JSON',0,["Brown","Yellow","Red","Purple"])
+        Phase4.StartingRound(plays,dict(zip(plays,['mainz','ulm','berlin'])),B)
+        Phase4.BuyCities(plays,B,UserInterfaceC())
+
     def WholeGameTest():
         GameC(UserInterfaceC())
-    WholeGameTest()
+    Phase4Test()
 
 

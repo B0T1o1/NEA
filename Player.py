@@ -63,6 +63,17 @@ class PlayerC:
     def GetCities(self) -> list:
         return self.__cities
     
+    def GetSourceCity(self) -> str:
+        return self.__sourceCity
+    def BuyCity(self,city,cost):
+        self.__cities.append(city)
+        self.__Electros -=  cost
+
+    def AddSourceCity(self,city):
+        self.__sourceCity = city
+        self.__cities.append(city)
+    
+    
     def RemovePowerStation(self,PowerStation:PowerStationC):
         self.__PowerStations.remove(PowerStation)
     
@@ -92,8 +103,7 @@ class PlayerC:
 if __name__ ==  "__main__":
     p = PowerStationC(3,'O',2,1)
     player = PlayerC(50,"jane")
-    player.AddPowerstation(p,3)
-    player.add
+
     print(player.GetResourceSpace())
     
 

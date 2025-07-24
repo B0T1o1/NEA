@@ -9,24 +9,22 @@ class BoardC:
             #TODO Ui errors
             pass
         self.__map_data = json.load(file)["maps"][map]
-        self.__regions = regions
+        self._regions = regions
 
         self.LoadMap()
 
 
-
-
     def LoadMap(self):
-        self.city_ids = [city["id"] for city in self.__map_data["cities"] if city["region"] in self.__regions]
+        self.city_ids = [city["id"] for city in self.__map_data["cities"] if city["region"] in self._regions]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
         self.indexes_to_cities = {i:city_id for i,city_id in enumerate(self.city_ids)}
-        self.cityIds_to_CityClass = {city["id"]:City(city["id"],i,city["region"]) for i,city in enumerate(self.__map_data["cities"]) if city["region"] in self.__regions}
+        self.cityIds_to_CityClass = {city["id"]:City(city["id"],i,city["region"]) for i,city in enumerate(self.__map_data["cities"]) if city["region"] in self._regions}
         self.number_of_cities = len(self.city_ids)
         self.adjancency_matrix = [[math.inf for _ in range( self.number_of_cities) ] for _ in range(self.number_of_cities)]
         
         # Populate adjanceny matrix
         for city in self.__map_data["cities"]:
-            if city["region"] not in self.__regions:
+            if city["region"] not in self._regions:
                 continue
             source_id = city["id"]
             source_index = self.city_to_indexes[source_id]
@@ -86,17 +84,14 @@ class City:
         self.__PlayersOwn = []
         self.__Stage = 1
         self.Region = Region
-    def PlayerBuyCity(self,Electros,PlayerName):
+
+    def PlayerBuyCity(self,PlayerName):
         if self.CityIsAvailable(PlayerName):
-            Cost = (len(self.__PlayersOwn)+2) * 5 
-            if Cost > Electros:
-                raise ValueError # TODO Create an insuffcient funds error
-            else:
-                Electros -= Cost
                 self.__PlayersOwn.append(PlayerName)  
-                return Electros
         else:
             pass # TODO create an error
+    def GetCostInCity(self):
+        return (len(self.__PlayersOwn)+2) * 5
         
     def DoesPlayerOwnCity(self,PlayerName):
         if PlayerName in self.__PlayersOwn:
@@ -116,6 +111,6 @@ class City:
 
 
 if __name__ == "__main__":   
-    B = BoardC('board.JSON',0)
+    B = BoardC('board.JSON',0,["Brown","Yellow","Red","Purple"])
     B.cityIds_to_CityClass["emden"].PlayerBuyCity(20,"Luca")
     print(B.cityIds_to_CityClass["emden"].CityIsAvailable("maya"))

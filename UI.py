@@ -1,6 +1,9 @@
 from PowerStation import PowerStationC
 from Board import BoardC
 from Player import PlayerC
+import math
+import networkx as nx
+import matplotlib.pyplot as plt
 TYPE_TO_WORD = { 'C':'Coal', 'O':'Oil', 'H':'Hybrid', 'G': 'Garbage', 'N':'Nuclear', 'R':'Renewable'}
 
 class UserInterfaceC:
@@ -14,9 +17,6 @@ class UserInterfaceC:
             except ValueError:
                 print('You didnt not enter an integer, please choose a whole positive number of players:    ')
         return Choice
-    
-    def DisplayBoard(self,BoardMap:BoardC) -> int:
-        return 0
 
     def SelectMap(self):
         map = input('Please type G for germany map or A for America Map:    ')
@@ -275,9 +275,91 @@ class UserInterfaceC:
             print(f"  Hybrid (C/O): {hybrid_space} additional space available for Coal or Oil.")
 
         print("------------------------------------------")
-                
+
+    def DisplayBoard(self, board:BoardC):
+        """
+        Displays the board as a network graph.
+        - Nodes are cities, colored by region.
+        - Edges represent connections, labeled with their cost.
+
+        Args:
+            board (BoardC): The board object containing all map and city data.
+        """
+        G = nx.Graph()
+
+        # Define a color palette for the regions using the recommended function
+        colors = plt.get_cmap('Pastel2', len(board._regions))
+        region_color_map = {region: colors(i) for i, region in enumerate(board._regions)}
+
+        # Add nodes (cities) to the graph
+        # Assign attributes for region and color
+        for city_id in board.city_ids:
+            city_obj = board.cityIds_to_CityClass[city_id]
+            region = city_obj.Region
+            G.add_node(city_id, region=region, color=region_color_map.get(region, 'gray'))
+
+        # Add edges (connections) to the graph
+        # Use a set to avoid adding duplicate edges in an undirected graph
+        added_edges = set()
+        for source_index, row in enumerate(board.adjancency_matrix):
+            for dest_index, cost in enumerate(row):
+                if cost != math.inf and source_index != dest_index:
+                    source_city_id = board.indexes_to_cities[source_index]
+                    dest_city_id = board.indexes_to_cities[dest_index]
+                    
+                    # Create a unique identifier for the edge to avoid duplicates
+                    edge_tuple = tuple(sorted((source_city_id, dest_city_id)))
+                    if edge_tuple not in added_edges:
+                        G.add_edge(source_city_id, dest_city_id, weight=int(cost))
+                        added_edges.add(edge_tuple)
+        
+        # Prepare for drawing the graph
+        plt.figure(figsize=(14, 10))
+        # Use a spring layout for automatic node positioning
+        pos = nx.spring_layout(G, seed=42, k=0.8) 
+        
+        # Get node colors and edge weights for drawing
+        node_colors = [data['color'] for _, data in G.nodes(data=True)]
+        edge_labels = nx.get_edge_attributes(G, 'weight')
+
+        # Draw the graph components
+        nx.draw_networkx_nodes(G, pos, node_size=2500, node_color=node_colors, edgecolors='black')
+        nx.draw_networkx_edges(G, pos, width=1.5, alpha=0.7)
+        nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='darkred')
+
+        # Create a legend for the regions
+        legend_handles = [plt.Rectangle((0,0),1,1, color=color, label=region) for region, color in region_color_map.items()]
+        plt.legend(handles=legend_handles, title="Regions", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        # Display the graph
+        plt.title("Power Grid Map", fontsize=20)
+        plt.margins(0.1)
+        plt.tight_layout()
+        plt.show()
+
+    def GetCity(self,Cities:list[str],costs:list[int],Player:str)-> str:
+        
+        Choice = ""
+        passed = False
+        while Choice not in Cities and not passed:
+            print(f"Which City would {Player} like to buy the options are:")
+            for i,city in enumerate(Cities):
+                print(f'{city} has a connection cost of {costs[i]}')
+            Choice = input("Choice:    ")
+            if Choice == 'pass':
+                return False
+            if Choice not in Cities:
+                print("that is not a choice, please spell exactly as written")
+        print(f"{Player} Have chosen {Choice}")
+        return Choice
+
+
+
 if __name__ == "__main__":
     ui = UserInterfaceC()
+    B = BoardC("board.JSON",0,["Brown","Yellow","Red","Purple"])
+    ui.DisplayBoard(B)
     ui.DisplayFuelCosts([1, 2, 3, 5, 7, 9, 12, 15, 18, 22, 26, 30, 35, 40, 45, 51, 57, 63, 70, 77, 84, 92, 100, 108],[3, 6, 9, 13, 17, 21, 26, 31, 36, 42, 48, 54, 61, 68, 75, 83, 91, 99],[6, 12, 18, 25, 32, 39, 47, 55, 63],[14, 30])
 
                 
