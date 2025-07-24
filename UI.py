@@ -1,6 +1,7 @@
 from PowerStation import PowerStationC
 from Board import BoardC
 from Player import PlayerC
+TYPE_TO_WORD = { 'C':'Coal', 'O':'Oil', 'H':'Hybrid', 'G': 'Garbage', 'N':'Nuclear', 'R':'Renewable'}
 
 class UserInterfaceC:
 
@@ -95,7 +96,7 @@ class UserInterfaceC:
         while True:
             choice = input(f"Enter the Value of the station ({', '.join(valid_ids)}) or type 'pass': ")
             if choice == 'pass':
-                return None
+                return -1
             if choice in valid_ids:
                 for station in market:
                     if str(station.GetValue()) == choice:
@@ -172,9 +173,108 @@ class UserInterfaceC:
 
             # Print the formatted row with costs
             print(f"{quantity:<10} | {coal_cost:<8} | {nuclear_cost:<8} | {garbage_cost:<8} | {oil_cost:<8}")
-    def GetAmountOfFuelType(self):
+
+    def PlayerHasBoughtFuel(self,name,amount,cost,Type,electros):
+        print(f'{name} has bought {amount} of {TYPE_TO_WORD[Type]} for {cost}and now has ${electros}')
+    def DisplayPlayerMoney(self,player:PlayerC):
+        print(f'{player.GetName()} has ${player.GetElectros()}')
+
+    def GetAmountOfFuelType(self) -> tuple[str | None, int]:
+        """
+        Prompts the player to enter the type and amount of fuel they wish to buy.
+
+        Handles input validation and allows the player to pass their turn.
+
+        Returns:
+            A tuple containing:
+            - The fuel type ('C', 'O', 'G', 'N') or None if passing.
+            - The amount of fuel (an integer > 0) or 0 if passing.
+        """
+        while True:
+            # 1. Create a clear prompt for the user
+            prompt = (
+                "\nEnter the fuel type and amount (e.g., 'C 5' for 5 coal).\n"
+                "Valid types: (C)oal, (O)il, (G)arbage, (N)uclear.\n"
+                "Type 'pass' or enter an amount of 0 to finish buying: "
+            )
+            user_input = input(prompt).strip().upper()
+
+            # 2. Check if the player wants to pass
+            if user_input == "PASS" or user_input == "":
+                return None, 0
+
+            parts = user_input.split()
+
+            # 3. Validate the input format (must be two parts)
+            if len(parts) != 2:
+                print("\n❗️ Invalid format. Please enter a type and an amount (e.g., 'O 3').")
+                continue
+
+            fuel_type, amount_str = parts
+
+            # 4. Validate the fuel type
+            if fuel_type not in ['C', 'O', 'G', 'N']:
+                print(f"\n❗️ Invalid fuel type '{fuel_type}'. Please use C, O, G, or N.")
+                continue
+
+            # 5. Validate the amount
+            try:
+                amount = int(amount_str)
+                if amount < 0:
+                    print("\n❗️ Amount cannot be negative. Please enter a positive number.")
+                    continue
+                # If all checks are successful, return the valid data
+                return fuel_type, amount
+            except ValueError:
+                print(f"\n❗️ Invalid amount '{amount_str}'. Please enter a whole number.")
+                continue
+    def DisplayResourceSpace(self,player: PlayerC):
+        """
+        Displays a player's current resources and storage based on the
+        PlayerC class's GetResourceSpace and GetResources methods.
+
+        Args:
+            player: The player object whose resources will be displayed.
+        """
+        # 1. Define a mapping from internal codes to readable names for display.
+        fuel_names = {
+            'C': 'Coal   ',
+            'O': 'Oil    ',
+            'G': 'Garbage',
+            'N': 'Nuclear'
+        }
+
+        # 2. Get the necessary data by calling methods from the PlayerC class.
+        available_space = player.GetResourceSpace()
+        current_resources = player.GetResources()
+        hybrid_space = available_space['H']
+        if available_space['O'] < 0:
+            hybrid_space += available_space['O']
+            available_space['O'] = 0
+        if available_space['C'] < 0:
+            hybrid_space += available_space['C']
+            available_space['C'] = 0
         
 
+        # 3. Print a clear, formatted header.
+        print(f"\n--- {player.GetName()}'s Resources & Storage ---")
+
+        # 4. Iterate and display the info for each primary fuel type.
+        for code, name in fuel_names.items():
+            held = current_resources.get(code, 0)
+            # Get the remaining space from the dictionary provided by GetResourceSpace()
+            space = available_space.get(code, 0)
+            # Total capacity is simply the sum of what's held and the remaining space.
+            capacity = held + space
+            
+            print(f"  {name}: {held} held, {space} space available (Capacity: {capacity})")
+        
+        # 5. Separately display the shared hybrid storage space, if any.
+        
+        if hybrid_space > 0:
+            print(f"  Hybrid (C/O): {hybrid_space} additional space available for Coal or Oil.")
+
+        print("------------------------------------------")
                 
 if __name__ == "__main__":
     ui = UserInterfaceC()

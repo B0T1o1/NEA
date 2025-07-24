@@ -5,6 +5,7 @@ from Board import BoardC
 from Resource_Market import R_Market
 from PowerStationMarket import PS_Market
 
+
 class GameC:
     def __init__(self, UI:UserInterfaceC,BoardFile = "board.JSON",StationFile = "stations.JSON"):
         self.__UI = UI
@@ -28,6 +29,7 @@ class GameC:
         self.__regions = self.__players_to_regions[self.__NofPlayers]
         self.__Board = BoardC(BoardFile, map,self.__regions)
         self.__PowerStationMarket = PS_Market(StationFile,self.__NofPlayers)
+        self.__ResourceMarket = R_Market()
         self.__starting_cities = self.ChooseStart()
         
 
@@ -46,9 +48,10 @@ class GameC:
         return dict(zip(self.__Players, chosen_cities))
     
     def __StartingRound(self):
-        Phase2.First_round(self.__PowerStationMarket,self.__Players,self.__UI)
+        Phase2.Auction(self.__PowerStationMarket,self.__Players,self.__UI,IsFirstRound=True)
         self.__Players = Phase1.Determine_Player_Order(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
+        Phase3.ResourceBuying(self.__ResourceMarket,self.__Players,self.__UI)
         
             
 
@@ -72,16 +75,17 @@ class Phase1:
 
 class Phase2:
     @staticmethod
-    def First_round(PS_Market: PS_Market, players: list[PlayerC], UI: UserInterfaceC):
-        #create copy of list to ensure do not edit actual players list
+    def Auction(PS_Market: PS_Market, players: list[PlayerC], UI: UserInterfaceC,IsFirstRound:bool =False):
         players_to_buy = list(players)
         discount_available = True
-
-        for auction_starter in players:
+        index = 0
+        while len(players_to_buy) != 0:
+            auction_starter = players[index]
             if auction_starter not in players_to_buy:
                 continue
 
-            UI.DisplayMessage(f"\n {auction_starter.GetName()}'s turn to start an auction\nThey have {auction_starter.GetElectros()} Electros.")
+            UI.DisplayMessage(f"\n {auction_starter.GetName()}'s turn to start an auction")
+            UI.DisplayPlayerMoney(auction_starter)
             current_market, future_market = PS_Market.GiveMarket()
             
             lowest_station = current_market[0]
@@ -89,9 +93,14 @@ class Phase2:
             UI.DisplayCurrentMarket(discount_available, current_market)
             UI.DisplayFutureMarket(future_market)
 
-            station_to_auction = UI.ChooseStationToAuctionFirst(current_market, auction_starter.GetName())
+            if IsFirstRound:
+                station_to_auction = UI.ChooseStationToAuctionFirst(current_market, auction_starter.GetName())
+            else:
+                station_to_auction = UI.ChooseStationToAuction(current_market, auction_starter.GetName())
 
-            if not station_to_auction:
+            if not IsFirstRound and station_to_auction == -1:
+                players_to_buy.remove(auction_starter)
+                UI.DisplayMessage(f"{auction_starter.GetName()} has passed and will not participate further in this phase's auctions.")
                 continue
             
             will_consume_discount = False
@@ -105,7 +114,7 @@ class Phase2:
                 
             high_bidder = auction_starter
             if not will_consume_discount:
-                 UI.DisplayMessage(f"{auction_starter.GetName()} starts the bidding for Power Station #{station_to_auction.GetValue()} at ${current_bid}.")
+                UI.DisplayMessage(f"{auction_starter.GetName()} starts the bidding for Power Station #{station_to_auction.GetValue()} at ${current_bid}.")
 
             potential_bidders = [p for p in players_to_buy if p != auction_starter]
             potential_bidders.append(auction_starter)
@@ -133,99 +142,62 @@ class Phase2:
                 discount_available = False
             
             if len(winner.GetPowerStations()) == 3:
-                UI.RemovePowerStation(winner.GetPowerStations(),winner.GetName())
-            winner.AddPowerstation(station_to_auction, current_bid)
+                choice = UI.RemovePowerStation(winner.GetPowerStations(),winner.GetName())
+                winner.RemovePowerStation(choice)
+                winner.BuyPowerstation(station_to_auction,current_bid)
+
+            winner.BuyPowerstation(station_to_auction, current_bid)
             PS_Market.BuyPowerStation(station_to_auction)
             players_to_buy.remove(winner)
-            
-    @staticmethod
-    def AuctionStage12(PS_Market: PS_Market, players: list[PlayerC], UI: UserInterfaceC):
-        players_to_buy = list(players)
-        discount_available = True
+            if winner == auction_starter:
+                index += 1
 
-        for auction_starter in players:
-            if auction_starter not in players_to_buy:
-                continue
 
-            UI.DisplayMessage(f"\n {auction_starter.GetName()}'s turn to start an auction\nThey have {auction_starter.GetElectros()} Electros.")
-            current_market, future_market = PS_Market.GiveMarket()
-            
-            lowest_station = current_market[0]
-            
-            UI.DisplayCurrentMarket(discount_available, current_market)
-            UI.DisplayFutureMarket(future_market)
-
-            station_to_auction = UI.ChooseStationToAuction(current_market, auction_starter.GetName())
-
-            if not station_to_auction:
-                continue
-            
-            will_consume_discount = False
-
-            if discount_available and station_to_auction.GetValue() == lowest_station.GetValue():
-                current_bid = 1
-                will_consume_discount = True
-                UI.DisplayMessage(f"The discount token is being used! The starting bid for Power Station #{station_to_auction.GetValue()} is $1.")
-            else:
-                current_bid = station_to_auction.GetValue()
-                
-            high_bidder = auction_starter
-            if not will_consume_discount:
-                 UI.DisplayMessage(f"{auction_starter.GetName()} starts the bidding for Power Station #{station_to_auction.GetValue()} at ${current_bid}.")
-
-            potential_bidders = [p for p in players_to_buy if p != auction_starter]
-            potential_bidders.append(auction_starter)
-            won = False
-            while not won:
-                for bidder in potential_bidders:
-                    if bidder == high_bidder:
-                        won = True
-                    else:
-                        if bidder.CheckEnoughElectros(current_bid):
-                            new_bid = UI.GetAuctionBid(station_to_auction, current_bid, high_bidder.GetName(), bidder)
-
-                            if new_bid and new_bid > current_bid:
-                                current_bid = new_bid
-                                high_bidder = bidder
-                                UI.DisplayMessage(f"{bidder.GetName()} is the new high bidder with ${current_bid}!")
-                            else:
-                                potential_bidders.remove(bidder)
-
-            winner = high_bidder
-
-            UI.AnnounceAuctionWinner(winner.GetName(), station_to_auction.GetValue(), current_bid)
-            
-            if will_consume_discount:
-                discount_available = False
-            
-            if len(winner.GetPowerStations()) == 3:
-                UI.RemovePowerStation(winner.GetPowerStations(),winner.GetName())
-            winner.AddPowerstation(station_to_auction, current_bid)
-            PS_Market.BuyPowerStation(station_to_auction)
-            players_to_buy.remove(winner)
 
 class Phase3:
     @staticmethod
     def ResourceBuying(ResourceMarket:R_Market,Players:list[PlayerC],UI:UserInterfaceC):
-        UI.DisplayFuelCosts(ResourceMarket.GetCostOfCoal(),ResourceMarket.GetCostOfNuclear(),ResourceMarket.GetCostOfGarbage(),ResourceMarket.GetCostOfOil())
-        for player in Players:
-            pass
-            
-        
+        for player in reversed(Players):
+            passed = False
+            while not passed:
+                coal,nuclear,garbage,oil =ResourceMarket.GetCostOfCoal(),ResourceMarket.GetCostOfNuclear(),ResourceMarket.GetCostOfGarbage(),ResourceMarket.GetCostOfOil()
+                UI.DisplayFuelCosts(coal,nuclear,garbage,oil)
+                UI.DisplayPlayerMoney(player)
+                UI.DisplayResourceSpace(player)
+                cost_of_resources = { 'C':coal, 'O':oil, 'G':garbage, 'N':nuclear}
+                Type,amount = UI.GetAmountOfFuelType()
+                if amount == 0:
+                    passed = True
+                    continue
+                if Type in ['C','O','G','N']:
+                    
+                    if player.CheckEnoughElectros(cost_of_resources[Type][amount-1]) and player.HasResourceSpace(Type,amount):
+                        cost = ResourceMarket.Buy_Resource(Type,amount)
+                        player.BuyResource(cost,Type,amount)
+                        UI.PlayerHasBoughtFuel(player.GetName(),amount,cost,Type,player.GetElectros())
+                else:
+                    pass # TODO
+                    
 
             
 
-        
+            
+
+
 
 if __name__ == '__main__':
-    plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
-    market = PS_Market("stations.JSON",3)
-    for player in plays:
+    def Phase3Test():
+        plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
+        market = PS_Market("stations.JSON",3)
+        for player in plays:
 
-        station = market.GiveMarket()[0][0]
-        cost = station.GetValue()
-        player.AddPowerstation(market.BuyPowerStation(station),cost)
-    
-    Phase3.ResourceBuying(R_Market(),plays,UserInterfaceC())
+            station = market.GiveMarket()[0][0]
+            cost = station.GetValue()
+            player.BuyPowerstation(market.BuyPowerStation(station),cost)
+        
+        Phase3.ResourceBuying(R_Market(),plays,UserInterfaceC())
+    def WholeGameTest():
+        GameC(UserInterfaceC())
+    WholeGameTest()
 
 

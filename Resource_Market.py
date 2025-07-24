@@ -5,6 +5,10 @@ class R_Market:
         self.Garbage = 9 
         self.Nuclear = 2
 
+    def Buy_Resource(self,resource_type,quantity):
+        types_buy_function = {'C':self.BuyCoal, 'O':self.BuyOil, 'G':self.BuyGarbage, 'N':self.BuyNuclear}
+        return types_buy_function[resource_type](quantity)
+
     def AddCoal(self,Quantity):
         self.Coal += Quantity
         if self.Coal > 24:
@@ -21,9 +25,9 @@ class R_Market:
             self.Garbage = 24
 
     def AddNuclear(self,Quantity):
-        self.Garbage += Quantity
-        if self.Garbage > 12:
-            self.Garbage = 12
+        self.Nuclear += Quantity
+        if self.Nuclear > 12:
+            self.Nuclear = 12
 
     def GetCostOfCoal(self) -> list[int]:
         coal = self.Coal
@@ -48,6 +52,7 @@ class R_Market:
                 Quantity -= 1
                 costs.append(Cost)
         return costs
+    
     def GetCostOfGarbage(self) -> list[int]:
         Garbage = self.Garbage
         Quantity = Garbage
@@ -94,7 +99,7 @@ class R_Market:
         if self.Oil >= Quantity:
             while Quantity != 0:
                 Cost += 8 - ((self.Oil - 1)// 3)
-                self.Coal -= 1
+                self.Oil -= 1
                 Quantity -= 1
 
             return Cost
@@ -115,7 +120,7 @@ class R_Market:
             # TODO raise ui error 
             print('Not enough Garbage')
 
-    def BuyNuclear(self,Quanitity):
+    def BuyNuclear(self,Quantity):
         Cost  = 0
         if self.Nuclear >= Quantity:
             while Quantity != 0:
@@ -128,7 +133,7 @@ class R_Market:
             return Cost
         else:
             # TODO raise ui error 
-            print('Not enough Garbage')
+            print('Not enough nuclear')
 
             
 

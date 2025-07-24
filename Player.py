@@ -6,7 +6,7 @@ class PlayerC:
         self.__PowerStations: list[PowerStationC] = []
         self.__cities: list[str] = []
         self.__name = name
-        self.__Resources =  { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
+        self.__Resources =  { 'C':0, 'O':0, 'G':0, 'N':0}
 
 
     def GetPowerStations(self) -> list:
@@ -17,12 +17,38 @@ class PlayerC:
         available =  { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
         for PowerStation in self.__PowerStations:
             available[PowerStation.GetFuelType()] += PowerStation.GetFuelAmount() * 2
-        for type in  ['C','O','H','G','N','R']:
+        for type in  ['C','O','G','N']:
             available[type] -=  self.__Resources[type]
         return available
+    
+    def HasResourceSpace(self,Type,amount:int)-> bool:
+        spaces = self.GetResourceSpace()
+        space = 0
+        if Type == 'O' and self.__Resources['C'] <= spaces['C']:
+            space += spaces['H']
 
-    def addResource(self,cost):
-        pass
+        elif Type == 'O':
+            space += spaces['H'] - - spaces['C']
+
+        elif Type == 'C' and self.__Resources['O'] <= spaces['O']:
+            space += spaces['H']
+        elif Type == 'C':
+            space += spaces['H']  - spaces['O']
+        
+        space += spaces[Type]
+
+        if space >= amount:
+            return True
+        else:
+            return False
+        
+    def GetResources(self):
+        return self.__Resources
+
+
+    def BuyResource(self,cost:int,resourcetype,resourceamount:int):
+        self.__Resources[resourcetype] += resourceamount
+        self.__Electros -= cost
 
     
     def GetName(self) -> str:
@@ -37,23 +63,27 @@ class PlayerC:
     def GetCities(self) -> list:
         return self.__cities
     
-    def AddPowerstation(self,PowerStation:PowerStationC,cost):
+    def RemovePowerStation(self,PowerStation:PowerStationC):
+        self.__PowerStations.remove(PowerStation)
+    
+    def BuyPowerstation(self,PowerStation:PowerStationC,cost):
         if len(self.__PowerStations) != 3:
             self.__PowerStations.append(PowerStation)
-        self.__Electros -= cost
-        return
+            self.__Electros -= cost
+        else:
+            raise ValueError # TODO
     
 
     def __lt__(self,other):
         if not isinstance(other, PlayerC):
             raise TypeError('Can only compare Player objects')
-        if len(self.GetCities()) > len(self.GetCities()):
-            return False
         if len(self.GetCities()) < len(self.GetCities()):
-            return True
-        if self.GetPowerStations()[-1].GetValue() <  other.GetPowerStations()[-1].GetValue():
+            return False
+        if len(self.GetCities()) > len(self.GetCities()):
             return True
         if self.GetPowerStations()[-1].GetValue() >  other.GetPowerStations()[-1].GetValue():
+            return True
+        if self.GetPowerStations()[-1].GetValue() <  other.GetPowerStations()[-1].GetValue():
             return False
 
             
