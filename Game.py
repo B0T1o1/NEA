@@ -196,8 +196,8 @@ class Phase4:
             passed = False
             while not passed:
                 UI.DisplayBoard(board)
-                costs = [board.CheckConnectionCost(player.GetSourceCity(), city_id) for city_id in board.city_ids]
-                choice_city = UI.GetCity(board.city_ids,costs,player.GetName())
+                costs = [board.DjkstrasSearch(player.GetSourceCity(), city_id,player.GetName()) for city_id in board.city_ids]
+                choice_city = UI.GetCity(board.city_ids,costs,player.GetName(),player.GetElectros())
                 
                 if choice_city:
 
@@ -215,7 +215,25 @@ class Phase4:
                 
                 
 
-
+class Phase5:
+    @staticmethod
+    def Bureaucracy():
+        pass
+    @staticmethod
+    def PowerStations(Players:list[PlayerC],UI:UserInterfaceC):
+        for player in Players:
+            Stations, Fuel = UI.choose_power_stations_to_power(player)
+            for station in Stations:
+                pass
+    @staticmethod
+    def RestockResources():
+        pass
+    @staticmethod
+    def RestockStations():
+        pass
+    @staticmethod
+    def CheckStageChangeAndWin():
+        pass
             
             
 

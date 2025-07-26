@@ -338,10 +338,11 @@ class UserInterfaceC:
         plt.tight_layout()
         plt.show()
 
-    def GetCity(self,Cities:list[str],costs:list[int],Player:str)-> str:
+    def GetCity(self,Cities:list[str],costs:list[int],Player:str,electros)-> str:
         
         Choice = ""
         passed = False
+        print(f'{Player} has {electros}')
         while Choice not in Cities and not passed:
             print(f"Which City would {Player} like to buy the options are:")
             for i,city in enumerate(Cities):
@@ -351,8 +352,100 @@ class UserInterfaceC:
                 return False
             if Choice not in Cities:
                 print("that is not a choice, please spell exactly as written")
-        print(f"{Player} Have chosen {Choice}")
+        print(f"{Player} has chosen {Choice}")
         return Choice
+
+    def choose_power_stations_to_power(self, player: PlayerC) -> tuple[list[PowerStationC], dict]:
+        """
+        Allows a player to choose which of their power stations to use to power their cities.
+
+        This function will loop until the player provides a valid selection that meets two criteria:
+        1. The player has enough resources to fuel the selected power stations.
+        2. The selected power stations can power all of the player's cities.
+
+        Args:
+            player: The PlayerC object for whom to make the selection.
+
+        Returns:
+            A tuple containing:
+            - A list of the chosen PowerStationC objects.
+            - A dictionary of the resources that will be consumed.
+        """
+        num_cities_owned = len(player.GetCities())
+        if num_cities_owned == 0:
+            print(f"\n--- {player.GetName()}'s Power Phase ---")
+            print("You have no cities to power. Skipping.")
+            return [], {}
+
+        available_stations = player.GetPowerStations()
+        player_resources = player.GetResources()
+
+        while True:  # Loop until a valid selection is made
+            print(f"\n--- {player.GetName()}'s Power Phase ---")
+            print(f"You own {num_cities_owned} cities and must power them all.")
+            print(f"Your available resources: {player_resources}")
+            print("\nYour Power Stations:")
+            for i, station in enumerate(available_stations):
+                print(
+                    f"  {i+1}) Value: {station.GetValue():<2} | "
+                    f"Powers: {station.GetNumberOfCitiesPowered():<2} cities | "
+                    f"Fuel: {station.GetFuelAmount()} {station.GetFuelWord()}"
+                )
+
+            prompt = f"\nEnter the numbers of the stations you want to use, separated by commas (e.g., 1,3): "
+            choice_str = input(prompt)
+
+            # --- Input Parsing and Validation ---
+            try:
+                chosen_indices = [int(n.strip()) - 1 for n in choice_str.split(',')]
+                if not all(0 <= i < len(available_stations) for i in chosen_indices):
+                    print("\n*** Invalid selection. Please enter numbers from the list. ***")
+                    continue
+                # Check for duplicate selections
+                if len(chosen_indices) != len(set(chosen_indices)):
+                    print("\n*** Invalid selection. You cannot choose the same power station twice. ***")
+                    continue
+
+            except ValueError:
+                print("\n*** Invalid input. Please enter numbers only, separated by commas. ***")
+                continue
+
+            # --- Selection Analysis ---
+            selected_stations = [available_stations[i] for i in chosen_indices]
+            resources_to_use = {'C': 0, 'O': 0, 'G': 0, 'N': 0}
+            total_cities_powered = 0
+            has_enough_resources = True
+
+            for station in selected_stations:
+                total_cities_powered += station.GetNumberOfCitiesPowered()
+                fuel_type = station.GetFuelType()
+                if fuel_type in resources_to_use:
+                    resources_to_use[fuel_type] += station.GetFuelAmount()
+
+            # --- Final Checks ---
+            for fuel, amount_needed in resources_to_use.items():
+                if amount_needed > player_resources.get(fuel, 0):
+                    print(f"\n*** Selection invalid: Not enough {fuel}. "
+                          f"Required: {amount_needed}, Have: {player_resources.get(fuel, 0)} ***")
+                    has_enough_resources = False
+                    break
+            
+            if not has_enough_resources:
+                continue
+
+            if total_cities_powered < num_cities_owned:
+                print(f"\n*** Selection invalid: Not enough power. "
+                      f"Cities to power: {num_cities_owned}, Selected power: {total_cities_powered} ***")
+                continue
+
+            # --- Success ---
+            print("\n--- Confirmation ---")
+            print("You have chosen to use the following power stations:")
+            for station in selected_stations:
+                print(f"  - {repr(station)}")
+            print(f"This will power {total_cities_powered} cities and consume: {resources_to_use}")
+            return selected_stations, resources_to_use
+
 
 
 

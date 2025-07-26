@@ -46,7 +46,9 @@ class BoardC:
     
 
 
-    def DjkstrasSearch(self,Source_index, PlayerName, Connection_index,):
+    def DjkstrasSearch(self,Source_id:str, Connection_id:str,PlayerName:str):
+        Source_index = self.city_to_indexes[Source_id]
+        Connection_index = self.city_to_indexes[Connection_id]
         previous  = [None] * self.number_of_cities
         visited = [False] * self.number_of_cities
         distances = [math.inf] * self.number_of_cities
