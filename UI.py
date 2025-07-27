@@ -338,7 +338,7 @@ class UserInterfaceC:
         plt.tight_layout()
         plt.show()
 
-    def GetCity(self,Cities:list[str],costs:list[int],Player:str,electros)-> str:
+    def GetCity(self,Cities:list[str],costs:list[int],Player:str,electros)-> str|False:
         
         Choice = ""
         passed = False
@@ -354,8 +354,7 @@ class UserInterfaceC:
                 print("that is not a choice, please spell exactly as written")
         print(f"{Player} has chosen {Choice}")
         return Choice
-
-    def choose_power_stations_to_power(self, player: PlayerC) -> tuple[list[PowerStationC], dict]:
+    def choose_power_stations_to_power(self, player: PlayerC) -> dict[PowerStationC, dict[str, int]]:
         """
         Allows a player to choose which of their power stations to use to power their cities.
 
@@ -367,15 +366,16 @@ class UserInterfaceC:
             player: The PlayerC object for whom to make the selection.
 
         Returns:
-            A tuple containing:
-            - A list of the chosen PowerStationC objects.
-            - A dictionary of the resources that will be consumed.
+            A dictionary where keys are the chosen PowerStationC objects and values are
+            dictionaries representing the specific fuel type and amount consumed by that
+            station (e.g., {station_obj: {'C': 2}}). Stations that don't require
+            fuel will have an empty dictionary as their value.
         """
         num_cities_owned = len(player.GetCities())
         if num_cities_owned == 0:
             print(f"\n--- {player.GetName()}'s Power Phase ---")
             print("You have no cities to power. Skipping.")
-            return [], {}
+            return {}
 
         available_stations = player.GetPowerStations()
         player_resources = player.GetResources()
@@ -392,16 +392,20 @@ class UserInterfaceC:
                     f"Fuel: {station.GetFuelAmount()} {station.GetFuelWord()}"
                 )
 
-            prompt = f"\nEnter the numbers of the stations you want to use, separated by commas (e.g., 1,3): "
+            prompt = "\nEnter the numbers of the stations you want to use, separated by commas (e.g., 1,3): "
             choice_str = input(prompt)
 
             # --- Input Parsing and Validation ---
             try:
-                chosen_indices = [int(n.strip()) - 1 for n in choice_str.split(',')]
+                # Handle empty input gracefully
+                if not choice_str:
+                    chosen_indices = []
+                else:
+                    chosen_indices = [int(n.strip()) - 1 for n in choice_str.split(',')]
+
                 if not all(0 <= i < len(available_stations) for i in chosen_indices):
                     print("\n*** Invalid selection. Please enter numbers from the list. ***")
                     continue
-                # Check for duplicate selections
                 if len(chosen_indices) != len(set(chosen_indices)):
                     print("\n*** Invalid selection. You cannot choose the same power station twice. ***")
                     continue
@@ -412,21 +416,31 @@ class UserInterfaceC:
 
             # --- Selection Analysis ---
             selected_stations = [available_stations[i] for i in chosen_indices]
-            resources_to_use = {'C': 0, 'O': 0, 'G': 0, 'N': 0}
+            station_fuel_map = {}
+            resources_to_use = {'C': 0, 'O': 0, 'G': 0, 'N': 0} # For validation
             total_cities_powered = 0
             has_enough_resources = True
 
             for station in selected_stations:
                 total_cities_powered += station.GetNumberOfCitiesPowered()
                 fuel_type = station.GetFuelType()
+                fuel_amount = station.GetFuelAmount()
+
+                # Create the individual fuel dictionary for the return value
+                station_consumption = {}
+                if fuel_amount > 0 and fuel_type in resources_to_use:
+                    station_consumption[fuel_type] = fuel_amount
+                station_fuel_map[station] = station_consumption
+
+                # Aggregate total fuel needed for validation check
                 if fuel_type in resources_to_use:
-                    resources_to_use[fuel_type] += station.GetFuelAmount()
+                    resources_to_use[fuel_type] += fuel_amount
 
             # --- Final Checks ---
             for fuel, amount_needed in resources_to_use.items():
                 if amount_needed > player_resources.get(fuel, 0):
                     print(f"\n*** Selection invalid: Not enough {fuel}. "
-                          f"Required: {amount_needed}, Have: {player_resources.get(fuel, 0)} ***")
+                        f"Required: {amount_needed}, Have: {player_resources.get(fuel, 0)} ***")
                     has_enough_resources = False
                     break
             
@@ -435,18 +449,19 @@ class UserInterfaceC:
 
             if total_cities_powered < num_cities_owned:
                 print(f"\n*** Selection invalid: Not enough power. "
-                      f"Cities to power: {num_cities_owned}, Selected power: {total_cities_powered} ***")
+                    f"Cities to power: {num_cities_owned}, Selected power: {total_cities_powered} ***")
                 continue
 
             # --- Success ---
             print("\n--- Confirmation ---")
             print("You have chosen to use the following power stations:")
+            total_consumption = {k: v for k, v in resources_to_use.items() if v > 0}
             for station in selected_stations:
                 print(f"  - {repr(station)}")
-            print(f"This will power {total_cities_powered} cities and consume: {resources_to_use}")
-            return selected_stations, resources_to_use
-
-
+            print(f"This will power {total_cities_powered} cities and consume: {total_consumption if total_consumption else 'Nothing'}")
+            
+            # Return the dictionary mapping stations to their specific fuel dict
+            return station_fuel_map
 
 
 if __name__ == "__main__":

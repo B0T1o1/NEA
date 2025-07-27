@@ -45,6 +45,11 @@ class PlayerC:
     def GetResources(self):
         return self.__Resources
 
+    def UseResources(self,type:str,amount:int):
+        if self.__Resources[type] >= amount:
+            self.__Resources[type] -= amount
+        else:
+            raise ValueError # TODO
 
     def BuyResource(self,cost:int,resourcetype,resourceamount:int):
         self.__Resources[resourcetype] += resourceamount

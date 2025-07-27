@@ -4,6 +4,7 @@ import random
 from Board import BoardC
 from Resource_Market import R_Market
 from PowerStationMarket import PS_Market
+from PowerStation import PowerStationC
 
 
 class GameC:
@@ -217,17 +218,63 @@ class Phase4:
 
 class Phase5:
     @staticmethod
-    def Bureaucracy():
-        pass
+    def Bureaucracy(Players:list[PlayerC],UI:UserInterfaceC,ResourceMarket:R_Market,Stage:int):
+        Powered = Phase5.PowerStations(Players,UI)
+        Phase5.RestockResources(ResourceMarket,Stage,len(Players))
+
     @staticmethod
-    def PowerStations(Players:list[PlayerC],UI:UserInterfaceC):
+    def PowerStations(Players:list[PlayerC],UI:UserInterfaceC) -> dict[PlayerC,int]:
+        Powered = {}
         for player in Players:
-            Stations, Fuel = UI.choose_power_stations_to_power(player)
-            for station in Stations:
-                pass
+            Correct = False
+            while not Correct:
+                Station_fuel =  UI.choose_power_stations_to_power(player)
+                result = Phase5.CheckStationsFuel(Station_fuel,player)
+                if result:
+                    for station,fuels in Station_fuel.items():
+                        for fuel,amount in fuels.items():
+                            player.UseResources(fuel,amount)
+                    Powered[player] = result
+                    Correct = True
+        return Powered
+            
     @staticmethod
-    def RestockResources():
-        pass
+    def CheckStationsFuel(Station_fuel:dict[PowerStationC, dict[str, int]],player:PlayerC)-> int|bool:
+        citiesPowered = 0
+
+        for station,fuels in Station_fuel.items():
+            required_amount = station.GetFuelAmount()
+            required_type = station.GetFuelType()
+            if required_type == 'R':
+                citiesPowered += station.GetNumberOfCitiesPowered()
+            if required_type !=  'H':
+                if fuels[required_type] == required_amount and required_amount <= player.GetResources()[required_type]:
+                    citiesPowered += station.GetNumberOfCitiesPowered()
+                else:
+                    return False
+            else:
+                totalAmount= 0
+                for fuel,amount in fuels.items():
+                    if player.GetResources()[fuel] >= amount:
+                        totalAmount += amount
+                if totalAmount == required_amount:
+                    citiesPowered += station.GetNumberOfCitiesPowered()
+                else:
+                    return False
+        return citiesPowered
+
+
+    @staticmethod
+    def RestockResources(ResourceMarket:R_Market,Stage:int,NofPlayers:int):
+        ResourceAmountResupply = {
+            3: [{'C':4, 'O':2, 'G':1, 'N':1}, {'C':5, 'O':3, 'G':2, 'N':1}, {'C':3, 'O':4, 'G':3, 'N':1}],
+            4: [{'C':5, 'O':3, 'G':2, 'N':1}, {'C':6, 'O':4, 'G':3, 'N':2}, {'C':4, 'O':5, 'G':4, 'N':2}],
+            5: [{'C':5, 'O':4, 'G':3, 'N':2}, {'C':7, 'O':5, 'G':3, 'N':3}, {'C':5, 'O':6, 'G':5, 'N':2}],
+            6: [{'C':7, 'O':5, 'G':3, 'N':2}, {'C':9, 'O':6, 'G':5, 'N':3}, {'C':6, 'O':7, 'G':6, 'N':3}]
+        }
+        for resource in ['C','O','G','N']:
+            ResourceMarket.Add_Resource(resource, ResourceAmountResupply[NofPlayers][Stage][resource])
+            
     @staticmethod
     def RestockStations():
         pass

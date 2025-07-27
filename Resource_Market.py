@@ -9,6 +9,10 @@ class R_Market:
         types_buy_function = {'C':self.BuyCoal, 'O':self.BuyOil, 'G':self.BuyGarbage, 'N':self.BuyNuclear}
         return types_buy_function[resource_type](quantity)
 
+    def Add_Resource(self,resource_type,quantity):
+        types_add_function = {'C':self.AddCoal, 'O':self.AddOil, 'G':self.AddGarbage, 'N':self.AddNuclear}
+        types_add_function[resource_type](quantity)
+
     def AddCoal(self,Quantity):
         self.Coal += Quantity
         if self.Coal > 24:
