@@ -253,7 +253,7 @@ class Phase5:
                 else:
                     return False
             else:
-                totalAmount= 0
+                totalAmount= 0 
                 for fuel,amount in fuels.items():
                     if player.GetResources()[fuel] >= amount:
                         totalAmount += amount
