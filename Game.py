@@ -17,15 +17,18 @@ class GameC:
 
 
     def __GameSetUp(self,BoardFile,StationFile):
-        self.__NofPlayers = self.__UI.RequestPlayers()
+        Valid = False
+        while not Valid:
+            choice = self.__UI.RequestPlayers()
+            if 3 <= choice <= 6:
+                self.__NofPlayers = choice
+                Valid = True
         self.__Players:list[PlayerC] = [PlayerC(self.__STARTING_ELECTROS,self.__UI.GetName()) for i in range (0, self.__NofPlayers)]
         self.__Round = 0
         self.__stage = 1
         self.__Players = Phase1.Random_Assignment(self.__Players)
         self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
         map = self.__UI.SelectMap()
-
-
         self.__players_to_regions = {3:["Brown","Yellow","Red","Purple"],4:["Brown","Green","Yellow","Red","Purple"],5:["Light Blue","Brown","Green","Yellow","Red","Purple"],6:["Light Blue","Brown","Green","Yellow","Red","Purple"]}
         self.__regions = self.__players_to_regions[self.__NofPlayers]
         self.__Board = BoardC(BoardFile, map,self.__regions)
@@ -56,6 +59,7 @@ class GameC:
         Phase3.ResourceBuying(self.__ResourceMarket,self.__Players,self.__UI)
         Phase4.StartingRound(self,self.__starting_cities,self.__Board)
         Phase4.BuyCities(self.__Players,self.__Board,self.__UI)
+        Phase5.Bureaucracy(self.__Players,self.__UI,self.__ResourceMarket,self.__stage)
         
             
 
@@ -174,8 +178,9 @@ class Phase3:
                     passed = True
                     continue
                 if Type in ['C','O','G','N']:
-                    
-                    if player.CheckEnoughElectros(cost_of_resources[Type][amount-1]) and player.HasResourceSpace(Type,amount):
+                    if len(cost_of_resources[Type]) < amount:
+                        UI.DisplayMessage("Insuffcient fuel in market")
+                    elif player.CheckEnoughElectros(cost_of_resources[Type][amount-1]) and player.HasResourceSpace(Type,amount):
                         cost = ResourceMarket.Buy_Resource(Type,amount)
                         player.BuyResource(cost,Type,amount)
                         UI.PlayerHasBoughtFuel(player.GetName(),amount,cost,Type,player.GetElectros())
@@ -279,8 +284,50 @@ class Phase5:
     def RestockStations():
         pass
     @staticmethod
-    def CheckStageChangeAndWin():
-        pass
+    def CheckStageChangeAndWin(CurrentStage:int,players:list[PlayerC],PowerPlantMarket:PS_Market,Powered:dict[PlayerC,int],UI:UserInterfaceC):
+        
+
+        stage2ReqsNoPlayers = {3:7,4:7,5:7,6:6}
+        winCondition = {3:17,4:17,5:15,6:14}
+        #stage 2 check
+        if CurrentStage == 1:
+            for player in players:
+                if len(player.GetCities()) >= stage2ReqsNoPlayers[len(players)]:
+                    CurrentStage = 2
+                    PowerPlantMarket.Stage2()
+        if CurrentStage != 3:
+            if PowerPlantMarket.Stage3():
+                CurrentStage = 3
+        players.sort()
+        if len(players[0].GetCities()) >= winCondition[len(players)]:
+            highest_score = 0
+            highest_player:list[PlayerC] = []
+            for player in players:
+                if Powered[player] > highest_score:
+                    highest_score = Powered[player]
+                    highest_player = [player]
+                elif Powered[player] == highest_score:
+                    highest_player.append(player)
+            if len(highest_player) == 1:
+                UI.DisplayMessage(f"{highest_player[0].GetName()} has won")
+                exit()
+            if len(highest_player) > 1:
+                Most_Money = 0
+                Player_With_most_money:PlayerC
+                for player in highest_player:
+                    Electros = player.GetElectros()
+                    if Electros > Most_Money:
+                        Player_With_most_money = player
+                        Most_Money = Electros
+            UI.DisplayMessage(UI.DisplayMessage(f"{Player_With_most_money.GetName()} has won"))
+
+                    
+
+
+
+
+
+                    
             
             
 
@@ -306,6 +353,6 @@ if __name__ == '__main__':
 
     def WholeGameTest():
         GameC(UserInterfaceC())
-    Phase4Test()
+    WholeGameTest()
 
 

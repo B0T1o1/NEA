@@ -1,3 +1,4 @@
+from typing import Literal,List
 from PowerStation import PowerStationC
 from Board import BoardC
 from Player import PlayerC
@@ -12,10 +13,11 @@ class UserInterfaceC:
         Valid = False
         while not Valid:
             try:
-                Choice = int(input('Please enter the number of players playing:     '))
-                Valid = True
+                Choice = int(input('Please enter the number of players playing (3-6):     '))
             except ValueError:
                 print('You didnt not enter an integer, please choose a whole positive number of players:    ')
+            else:
+                Valid = True
         return Choice
 
     def SelectMap(self):
@@ -42,7 +44,7 @@ class UserInterfaceC:
             print(f"Which City would {Player} like to start in, the options are:")
             for city in Cities:
                 print(city)
-            Choice = input("Choice:    ")
+            Choice = input("Choice:    ").lower()
             if Choice not in Cities:
                 print("that is not a choice, please spell exactly as written")
         print(f"{Player} Have chosen {Choice}")
@@ -338,22 +340,30 @@ class UserInterfaceC:
         plt.tight_layout()
         plt.show()
 
-    def GetCity(self,Cities:list[str],costs:list[int],Player:str,electros)-> str|False:
+    def GetCity(
+        self,
+        Cities: list[str],
+        costs: list[int],
+        Player: str,
+        electros: int
+    ) -> str | Literal[False]:
         
-        Choice = ""
-        passed = False
-        print(f'{Player} has {electros}')
-        while Choice not in Cities and not passed:
-            print(f"Which City would {Player} like to buy the options are:")
-            for i,city in enumerate(Cities):
-                print(f'{city} has a connection cost of {costs[i]}')
-            Choice = input("Choice:    ")
-            if Choice == 'pass':
+        print(f"{Player} has {electros}")
+        
+        while True:
+            print(f"Which City would {Player} like to buy? The options are:")
+            for city, cost in zip(Cities, costs):
+                print(f"{city} has a connection cost of {cost}")
+            
+            Choice = input("Choice (or type 'pass' to skip): ").strip().lower()
+            
+            if Choice.lower() == "pass":
                 return False
-            if Choice not in Cities:
-                print("that is not a choice, please spell exactly as written")
-        print(f"{Player} has chosen {Choice}")
-        return Choice
+            elif Choice in Cities:
+                print(f"{Player} has chosen {Choice}")
+                return Choice
+            else:
+                print("That is not a valid choice, please spell exactly as written.")
     def choose_power_stations_to_power(self, player: PlayerC) -> dict[PowerStationC, dict[str, int]]:
         """
         Allows a player to choose which of their power stations to use to power their cities.

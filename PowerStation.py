@@ -15,7 +15,9 @@ class PowerStationC:
     
     def GetFuelType(self) -> str:
         return self.__FuelType
-        
+    
+    def __repr__(self):
+        return self.__Value + self.__FuelType + self.__NumberOfCitiesPowered
     
     def GetFuelAmount(self) -> int:
         return self.__FuelAmount

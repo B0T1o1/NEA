@@ -67,6 +67,19 @@ class PS_Market:
                 return Station
     def GetDeck(self):
         return self.__Deck
+    def Stage2(self):
+        self.BuyPowerStation(self.GiveMarket()[0][0].GetValue())
+        self.__stage = 2
+        return
+    def Stage3(self) -> bool:
+        if self.__Market[-1].GetValue() == math.inf:
+            self.__stage = 3
+            self.__Market.pop(0)
+            self.__Market.pop()
+
+            return True
+        return False
+
         
     
 
