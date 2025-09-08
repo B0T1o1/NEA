@@ -10,7 +10,7 @@ from PowerStation import PowerStationC
 class GameC:
     def __init__(self, UI:UserInterfaceC,BoardFile = "board.JSON",StationFile = "stations.JSON"):
         self.__UI = UI
-        self.__STARTING_ELECTROS = 50
+        self.__STARTING_ELECTROS = 40
         self.__GameSetUp(BoardFile,StationFile)
         self.__StartingRound()
 
@@ -207,7 +207,7 @@ class Phase4:
                 
                 if choice_city:
 
-                    cost_of_choice = board.CheckConnectionCost(player.GetSourceCity(), choice_city)
+                    cost_of_choice = board.DjkstrasSearch(player.GetSourceCity(), choice_city,player.GetName())
 
 
 
