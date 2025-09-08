@@ -15,7 +15,7 @@ class GameC:
         self.__StartingRound()
 
 
-
+    
     def __GameSetUp(self,BoardFile,StationFile):
         Valid = False
         while not Valid:
@@ -209,8 +209,6 @@ class Phase4:
 
                     cost_of_choice = board.DjkstrasSearch(player.GetSourceCity(), choice_city,player.GetName())
 
-
-
                     if board.cityIds_to_CityClass[choice_city].CityIsAvailable(player.GetName()):
                         cost_of_choice += board.cityIds_to_CityClass[choice_city].GetCostInCity()
                         if player.CheckEnoughElectros(cost_of_choice):
@@ -252,7 +250,7 @@ class Phase5:
             required_type = station.GetFuelType()
             if required_type == 'R':
                 citiesPowered += station.GetNumberOfCitiesPowered()
-            if required_type !=  'H':
+            elif required_type !=  'H':
                 if fuels[required_type] == required_amount and required_amount <= player.GetResources()[required_type]:
                     citiesPowered += station.GetNumberOfCitiesPowered()
                 else:

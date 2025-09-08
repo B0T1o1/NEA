@@ -368,9 +368,10 @@ class UserInterfaceC:
         """
         Allows a player to choose which of their power stations to use to power their cities.
 
-        This function will loop until the player provides a valid selection that meets two criteria:
-        1. The player has enough resources to fuel the selected power stations.
-        2. The selected power stations can power all of the player's cities.
+        Unlike before, the player is not required to power all of their cities or use any stations at all.
+        The player may:
+        - Power some cities.
+        - Power none (skip this phase entirely).
 
         Args:
             player: The PlayerC object for whom to make the selection.
@@ -392,7 +393,7 @@ class UserInterfaceC:
 
         while True:  # Loop until a valid selection is made
             print(f"\n--- {player.GetName()}'s Power Phase ---")
-            print(f"You own {num_cities_owned} cities and must power them all.")
+            print(f"You own {num_cities_owned} cities.")
             print(f"Your available resources: {player_resources}")
             print("\nYour Power Stations:")
             for i, station in enumerate(available_stations):
@@ -401,17 +402,21 @@ class UserInterfaceC:
                     f"Powers: {station.GetNumberOfCitiesPowered():<2} cities | "
                     f"Fuel: {station.GetFuelAmount()} {station.GetFuelWord()}"
                 )
+            print("  0) Skip powering (use no stations)")
 
-            prompt = "\nEnter the numbers of the stations you want to use, separated by commas (e.g., 1,3): "
+            prompt = "\nEnter the numbers of the stations you want to use, separated by commas (e.g., 1,3), or 0 to skip: "
             choice_str = input(prompt)
 
             # --- Input Parsing and Validation ---
             try:
-                # Handle empty input gracefully
-                if not choice_str:
+                if not choice_str.strip():  # Empty input = skip
                     chosen_indices = []
                 else:
-                    chosen_indices = [int(n.strip()) - 1 for n in choice_str.split(',')]
+                    chosen_indices = [int(n.strip()) - 1 for n in choice_str.split(',') if n.strip()]
+
+                if chosen_indices == [-1]:  # Player entered 0 to skip
+                    print("\nYou chose to power no cities.")
+                    return {}
 
                 if not all(0 <= i < len(available_stations) for i in chosen_indices):
                     print("\n*** Invalid selection. Please enter numbers from the list. ***")
@@ -427,51 +432,46 @@ class UserInterfaceC:
             # --- Selection Analysis ---
             selected_stations = [available_stations[i] for i in chosen_indices]
             station_fuel_map = {}
-            resources_to_use = {'C': 0, 'O': 0, 'G': 0, 'N': 0} # For validation
-            total_cities_powered = 0
+            resources_to_use = {'C': 0, 'O': 0, 'G': 0, 'N': 0}
             has_enough_resources = True
 
             for station in selected_stations:
-                total_cities_powered += station.GetNumberOfCitiesPowered()
                 fuel_type = station.GetFuelType()
                 fuel_amount = station.GetFuelAmount()
 
-                # Create the individual fuel dictionary for the return value
                 station_consumption = {}
                 if fuel_amount > 0 and fuel_type in resources_to_use:
                     station_consumption[fuel_type] = fuel_amount
                 station_fuel_map[station] = station_consumption
 
-                # Aggregate total fuel needed for validation check
                 if fuel_type in resources_to_use:
                     resources_to_use[fuel_type] += fuel_amount
 
-            # --- Final Checks ---
+            # --- Resource Validation ---
             for fuel, amount_needed in resources_to_use.items():
                 if amount_needed > player_resources.get(fuel, 0):
                     print(f"\n*** Selection invalid: Not enough {fuel}. "
                         f"Required: {amount_needed}, Have: {player_resources.get(fuel, 0)} ***")
                     has_enough_resources = False
                     break
-            
+
             if not has_enough_resources:
                 continue
 
-            if total_cities_powered < num_cities_owned:
-                print(f"\n*** Selection invalid: Not enough power. "
-                    f"Cities to power: {num_cities_owned}, Selected power: {total_cities_powered} ***")
-                continue
-
             # --- Success ---
+            total_cities_powered = sum(station.GetNumberOfCitiesPowered() for station in selected_stations)
             print("\n--- Confirmation ---")
-            print("You have chosen to use the following power stations:")
-            total_consumption = {k: v for k, v in resources_to_use.items() if v > 0}
-            for station in selected_stations:
-                print(f"  - {repr(station)}")
-            print(f"This will power {total_cities_powered} cities and consume: {total_consumption if total_consumption else 'Nothing'}")
-            
-            # Return the dictionary mapping stations to their specific fuel dict
+            if selected_stations:
+                print("You have chosen to use the following power stations:")
+                for station in selected_stations:
+                    print(f"  - {repr(station)}")
+                total_consumption = {k: v for k, v in resources_to_use.items() if v > 0}
+                print(f"This will power {total_cities_powered} cities and consume: {total_consumption if total_consumption else 'Nothing'}")
+            else:
+                print("You chose to power no cities.")
+
             return station_fuel_map
+
 
 
 if __name__ == "__main__":
