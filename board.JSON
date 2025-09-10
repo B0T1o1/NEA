@@ -177,7 +177,7 @@
                     "id": "halle",
                     "name": "Halle",
                     "region": "Yellow",
-                    "connections": { "magdeburg": 11, "berlin": 17, "leipzig": 0, "erfurt": 6 }
+                    "connections": { "magdeburg": 11, "berlin": 17, "leipzig": 3, "erfurt": 6 }
                 },
                 {
                     "id": "leipzig",

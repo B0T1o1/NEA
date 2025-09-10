@@ -13,6 +13,11 @@ class GameC:
         self.__STARTING_ELECTROS = 40
         self.__GameSetUp(BoardFile,StationFile)
         self.__StartingRound()
+        self.__NextRound = True
+        while self.__NextRound:
+            self.__NextRound = self.__PlayRound()
+            
+
 
 
     
@@ -59,8 +64,22 @@ class GameC:
         Phase3.ResourceBuying(self.__ResourceMarket,self.__Players,self.__UI)
         Phase4.StartingRound(self,self.__starting_cities,self.__Board)
         Phase4.BuyCities(self.__Players,self.__Board,self.__UI)
-        Phase5.Bureaucracy(self.__Players,self.__UI,self.__ResourceMarket,self.__stage)
-        
+        Phase5.Bureaucracy(self.__Players,self.__UI,self.__ResourceMarket,self.__stage,self.__PowerStationMarket,self.__Board)
+
+    def __PlayRound(self) -> bool:
+        self.__Players = Phase1.Determine_Player_Order(self.__Players)
+        self.__UI.DisplayPlayerOrder([player.GetName() for player in self.__Players])
+        Phase2.Auction(self.__PowerStationMarket,self.__Players,self.__UI,IsFirstRound=False)
+        Phase3.ResourceBuying(self.__ResourceMarket,self.__Players,self.__UI)
+        Phase4.BuyCities(self.__Players,self.__Board,self.__UI)
+        return Phase5.Bureaucracy(self.__Players,self.__UI,self.__ResourceMarket,self.__stage,self.__PowerStationMarket,self.__Board)
+
+
+
+
+
+
+
             
 
 
@@ -221,9 +240,10 @@ class Phase4:
 
 class Phase5:
     @staticmethod
-    def Bureaucracy(Players:list[PlayerC],UI:UserInterfaceC,ResourceMarket:R_Market,Stage:int):
+    def Bureaucracy(Players:list[PlayerC],UI:UserInterfaceC,ResourceMarket:R_Market,Stage:int,powerplantMarket:PS_Market,Board:BoardC)-> bool:
         Powered = Phase5.PowerStations(Players,UI)
         Phase5.RestockResources(ResourceMarket,Stage,len(Players))
+        return Phase5.CheckStageChangeAndWin(Stage,Players,powerplantMarket,Powered,UI,Board)
 
     @staticmethod
     def PowerStations(Players:list[PlayerC],UI:UserInterfaceC) -> dict[PlayerC,int]:
@@ -282,8 +302,7 @@ class Phase5:
     def RestockStations():
         pass
     @staticmethod
-    def CheckStageChangeAndWin(CurrentStage:int,players:list[PlayerC],PowerPlantMarket:PS_Market,Powered:dict[PlayerC,int],UI:UserInterfaceC):
-        
+    def CheckStageChangeAndWin(CurrentStage:int,players:list[PlayerC],PowerPlantMarket:PS_Market,Powered:dict[PlayerC,int],UI:UserInterfaceC,Board:BoardC)->bool:
 
         stage2ReqsNoPlayers = {3:7,4:7,5:7,6:6}
         winCondition = {3:17,4:17,5:15,6:14}
@@ -293,9 +312,11 @@ class Phase5:
                 if len(player.GetCities()) >= stage2ReqsNoPlayers[len(players)]:
                     CurrentStage = 2
                     PowerPlantMarket.Stage2()
+                    Board.ChangeStage(CurrentStage)
         if CurrentStage != 3:
             if PowerPlantMarket.Stage3():
                 CurrentStage = 3
+                Board.ChangeStage(CurrentStage)
         players.sort()
         if len(players[0].GetCities()) >= winCondition[len(players)]:
             highest_score = 0
@@ -318,6 +339,9 @@ class Phase5:
                         Player_With_most_money = player
                         Most_Money = Electros
             UI.DisplayMessage(UI.DisplayMessage(f"{Player_With_most_money.GetName()} has won"))
+            return False
+        return True
+
 
                     
 
