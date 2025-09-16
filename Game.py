@@ -252,39 +252,36 @@ class Phase5:
             Correct = False
             while not Correct:
                 Station_fuel =  UI.choose_power_stations_to_power(player)
-                result = Phase5.CheckStationsFuel(Station_fuel,player)
+                result,CitiesPowered = Phase5.CheckStationsFuel(Station_fuel,player)
                 if result:
-                    for station,fuels in Station_fuel.items():
-                        for fuel,amount in fuels.items():
-                            player.UseResources(fuel,amount)
+                    #TODO fix paydict with correct
+                    payDict = {0: 10,1: 22, 2: 49,   3: 64,  4: 81,5: 97, 6: 128,    7: 134, 8: 139,    9: 142,10: 145,    11: 148,12: 149,    13: 150}
+                    player.Pay(payDict[CitiesPowered])
                     Powered[player] = result
                     Correct = True
         return Powered
             
     @staticmethod
-    def CheckStationsFuel(Station_fuel:dict[PowerStationC, dict[str, int]],player:PlayerC)-> int|bool:
+    def CheckStationsFuel(Station_fuel:dict[PowerStationC, dict[str, int]],player:PlayerC)-> (int,bool):
+        
+        Players_resources = player.GetResources()
         citiesPowered = 0
-
-        for station,fuels in Station_fuel.items():
+        for station, fuel_dict in Station_fuel.items():
             required_amount = station.GetFuelAmount()
-            required_type = station.GetFuelType()
-            if required_type == 'R':
+            for fueltype, amount in fuel_dict.items():
+                if fueltype in station.GetFuelOptions() and amount <= Players_resources[fueltype] and required_amount >= amount:
+                    Players_resources[fueltype] -= amount
+                    required_amount -= amount
+                else:
+                    return False,0
+            if required_amount == 0:
                 citiesPowered += station.GetNumberOfCitiesPowered()
-            elif required_type !=  'H':
-                if fuels[required_type] == required_amount and required_amount <= player.GetResources()[required_type]:
-                    citiesPowered += station.GetNumberOfCitiesPowered()
-                else:
-                    return False
-            else:
-                totalAmount= 0 
-                for fuel,amount in fuels.items():
-                    if player.GetResources()[fuel] >= amount:
-                        totalAmount += amount
-                if totalAmount == required_amount:
-                    citiesPowered += station.GetNumberOfCitiesPowered()
-                else:
-                    return False
-        return citiesPowered
+        if citiesPowered == 0:
+            return True,0
+        else:
+            player.ChangeResources(Players_resources)
+        return True,citiesPowered
+
 
 
     @staticmethod
@@ -303,7 +300,6 @@ class Phase5:
         pass
     @staticmethod
     def CheckStageChangeAndWin(CurrentStage:int,players:list[PlayerC],PowerPlantMarket:PS_Market,Powered:dict[PlayerC,int],UI:UserInterfaceC,Board:BoardC)->bool:
-
         stage2ReqsNoPlayers = {3:7,4:7,5:7,6:6}
         winCondition = {3:17,4:17,5:15,6:14}
         #stage 2 check

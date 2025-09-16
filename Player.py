@@ -8,7 +8,8 @@ class PlayerC:
         self.__name = name
         self.__Resources =  { 'C':0, 'O':0, 'G':0, 'N':0}
 
-
+    def Pay(self,Electros:int):
+        self.__Electros += Electros
     def GetPowerStations(self) -> list:
         self.__PowerStations.sort()
         return self.__PowerStations
@@ -77,7 +78,8 @@ class PlayerC:
     def AddSourceCity(self,city):
         self.__sourceCity = city
         self.__cities.append(city)
-    
+    def ChangeResources(self,NewResources:dict[str,int]):
+        self.__Resources = NewResources
     
     def RemovePowerStation(self,PowerStation:PowerStationC):
         self.__PowerStations.remove(PowerStation)

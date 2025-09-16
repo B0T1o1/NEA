@@ -24,7 +24,19 @@ class PowerStationC:
     def GetNumberOfCitiesPowered(self):
         return self.__NumberOfCitiesPowered
 
-
+    def GetFuelOptions(self) -> list[str]:
+        """
+        Returns a list of valid fuel types this station can use.
+        - Coal ('C'), Oil ('O'), Garbage ('G'), Nuclear ('N') are single-fuel stations.
+        - Hybrid ('H') can use either Coal ('C') or Oil ('O').
+        - Renewable ('R') requires no fuel (empty list).
+        """
+        if self.__FuelType == 'H':
+            return ['C', 'O']
+        elif self.__FuelType == 'R':
+            return []
+        else:
+            return [self.__FuelType]
     def __lt__(self,other):
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
