@@ -128,6 +128,7 @@ class Phase2:
             if not IsFirstRound and station_to_auction == -1:
                 players_to_buy.remove(auction_starter)
                 UI.DisplayMessage(f"{auction_starter.GetName()} has passed and will not participate further in this phase's auctions.")
+                index += 1
                 continue
             
             will_consume_discount = False

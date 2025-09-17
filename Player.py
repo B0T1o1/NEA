@@ -44,7 +44,7 @@ class PlayerC:
             return False
         
     def GetResources(self):
-        return self.__Resources
+        return dict(self.__Resources)
 
     def UseResources(self,type:str,amount:int):
         if self.__Resources[type] >= amount:

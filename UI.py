@@ -389,10 +389,10 @@ class UserInterfaceC:
             print("You have no cities to power. Skipping.")
             return {}
 
-        available_stations = player.GetPowerStations()
-        player_resources = player.GetResources()
 
         while True:  # Loop until a valid selection is made
+            player_resources = player.GetResources()
+            available_stations = player.GetPowerStations()
             print(f"\n--- {player.GetName()}'s Power Phase ---")
             print(f"You own {num_cities_owned} cities.")
             print(f"Your available resources: {player_resources}")
