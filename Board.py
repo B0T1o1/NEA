@@ -71,6 +71,14 @@ class BoardC:
                     min_d = distances[w]
                     v = w
         return distances[Connection_index]
+    
+    def ChangeStage(self,stage:int):
+
+        for cityid in self.city_ids:
+            city = self.cityIds_to_CityClass[cityid]
+            city.UpdateStage(stage)
+        return
+
 
         
 
@@ -106,6 +114,9 @@ class City:
             return True 
         else:
             return False
+        
+    def UpdateStage(self,stage:int):
+        self.__Stage = stage
 
     
     

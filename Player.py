@@ -8,7 +8,8 @@ class PlayerC:
         self.__name = name
         self.__Resources =  { 'C':0, 'O':0, 'G':0, 'N':0}
 
-
+    def Pay(self,Electros:int):
+        self.__Electros += Electros
     def GetPowerStations(self) -> list:
         self.__PowerStations.sort()
         return self.__PowerStations
@@ -43,7 +44,7 @@ class PlayerC:
             return False
         
     def GetResources(self):
-        return self.__Resources
+        return dict(self.__Resources)
 
     def UseResources(self,type:str,amount:int):
         if self.__Resources[type] >= amount:
@@ -75,9 +76,11 @@ class PlayerC:
         self.__Electros -=  cost
 
     def AddSourceCity(self,city):
+        self.__Electros -= 10 #TODO make global constant maybe
         self.__sourceCity = city
         self.__cities.append(city)
-    
+    def ChangeResources(self,NewResources:dict[str,int]):
+        self.__Resources = NewResources
     
     def RemovePowerStation(self,PowerStation:PowerStationC):
         self.__PowerStations.remove(PowerStation)

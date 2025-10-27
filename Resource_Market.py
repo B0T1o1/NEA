@@ -50,7 +50,7 @@ class R_Market:
         Quantity = Oil
         costs:list[int] = []
         Cost = 0
-        while Quantity != 0:
+        while Quantity != 0: 
                 Cost += 8 - ((Oil - 1)// 3)
                 Oil -= 1
                 Quantity -= 1
