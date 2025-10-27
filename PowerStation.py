@@ -40,4 +40,4 @@ class PowerStationC:
     def __lt__(self,other):
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
-        return self.__Value < other.__Value
+        return self.__Value < other.__Value 

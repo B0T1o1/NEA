@@ -21,7 +21,7 @@ class PS_Market:
         self.__Deck.append(self.__Cover)
         self.__Deck.append(Stage3(0,'',0,0))
         self.__stage = 1
-
+ 
     def ExtractStationsFromFile(self,PowerStationsFile:str):
         with open(PowerStationsFile,"r") as file:
             JsonStations = json.load(file)

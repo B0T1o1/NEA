@@ -76,6 +76,7 @@ class PlayerC:
         self.__Electros -=  cost
 
     def AddSourceCity(self,city):
+        self.__Electros -= 10 #TODO make global constant maybe
         self.__sourceCity = city
         self.__cities.append(city)
     def ChangeResources(self,NewResources:dict[str,int]):
