@@ -162,3 +162,33 @@
                 else:
                     pass # TODO
     """
+
+
+    @staticmethod
+    def StartingRound(players:list[PlayerC],startingCities,Board:BoardC):
+        for player,city in startingCities.items():
+            if player.CheckEnoughElectros(10):
+                player.AddSourceCity(city)
+                Board.cityIds_to_CityClass[city].PlayerBuyCity(player.GetName())
+                
+                
+    @staticmethod
+    def BuyCities(players:list[PlayerC],board:BoardC,UI:UserInterfaceC):
+        for player in reversed(players):
+            passed = False
+            while not passed:
+                UI.DisplayBoard(board)
+                costs = [board.DjkstrasSearch(player.GetSourceCity(), city_id,player.GetName()) for city_id in board.city_ids]
+                choice_city = UI.GetCity(board.city_ids,costs,player.GetName(),player.GetElectros())
+                
+                if choice_city:
+
+                    cost_of_choice = board.DjkstrasSearch(player.GetSourceCity(), choice_city,player.GetName())
+
+                    if board.cityIds_to_CityClass[choice_city].CityIsAvailable(player.GetName()):
+                        cost_of_choice += board.cityIds_to_CityClass[choice_city].GetCostInCity()
+                        if player.CheckEnoughElectros(cost_of_choice):
+                            board.cityIds_to_CityClass[choice_city].PlayerBuyCity(player.GetName())
+                            player.BuyCity(choice_city,cost_of_choice)
+                else:
+                    passed = True

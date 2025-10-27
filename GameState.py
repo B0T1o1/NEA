@@ -5,7 +5,7 @@ from Resource_Market import R_Market
 from PowerStationMarket import PS_Market
 from PowerStation import PowerStationC
 from typing import List
-
+import math
 
 class GameStateC:
     def __init__(self):
@@ -102,28 +102,74 @@ class GameStateC:
             raise Exception("Auction not finished yet.")
         
     def Get_Resource_Buyers(self) -> list[str]:
+        if self.Phase != 3:
+            raise Exception("Not in Phase 3")
         return [player.GetName() for player in self.Phase3.Get_Players_to_buy()]
     
     def Buy_Resource(self,player_name:str,ResourceType:str,amount:int):
+        if self.Phase != 3:
+            raise Exception("Not in Phase 3")
         player = self.__PName_to_PClass.get(player_name)
         if player:
             self.Phase3.Buy_Resources(player,ResourceType,amount)
         else:
             raise IndexError(f'Player with name {player_name} not found.')
         
-
-
+    def Player_Finished_Buying(self,player_name:str):
+        if self.Phase != 3:
+            raise Exception("Not in Phase 3")
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            self.Phase3.Player_Finished_Buying(player)
+        else:
+            raise IndexError(f'Player with name {player_name} not found.')
     
+    def Finish_Resource_Buying(self):
+        if self.Phase != 3:
+            raise Exception("Not in Phase 3")
+        if self.Phase3.Finish_Resource_Buying():
+            self.Phase = 4
+            return True
+        raise Exception("Not all Players have finished buying resources yet.")
 
-    
-
+    def Do_City_Buying(self):
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        self.Phase4 = Phase4([self.__Players][::-1],self.__Board)
         
-        
-    
-    
-    
+    def Get_Players_for_City_Buying(self) -> List[str]:
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        return [player.GetName() for player in self.Phase4.Get_Players()]
 
-            
+    def Get_City_Costs(self,player_name:str) -> dict[str,int]:
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            return self.Phase4.Get_Costs()
+        else:
+            raise IndexError(f'Player with name {player_name} not found.')
+        
+    def Player_Finished_city_buying(self,player_name:str):
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            return self.Phase4.Player_Finished_Buying(player)
+        else:
+            raise IndexError(f'Player with name {player_name} was not found')
+        
+    def Player_Buy_City(self,player_name:str,city_id:str):
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            return self.Phase4.Player_Buy_City(city_id)
+        else:
+            raise IndexError(f'Player with name {player_name} was not found')
+
+          
 
 
 
@@ -139,8 +185,6 @@ class Phase1:
         players.sort()
         return players
     
-
-
 
 class Phase2:
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
@@ -164,8 +208,6 @@ class Phase2:
         return True
         
 
-
-
 class Phase2StartingRound(Phase2):
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
         super().__init__(PS_Market,players)
@@ -177,8 +219,6 @@ class Phase2StartingRound(Phase2):
         else:
             Phase1.Determine_Player_Order(self.__Players)
             return True
-    
-
     
 
 
@@ -220,45 +260,46 @@ class Phase3:
     
     
 
-    
-
-
-
 class Phase4:
     def __init__(self,players:List[PlayerC],board:BoardC):
         self.__players = list(players)
+        self.__players_to_buy = list(players)
         self.__board = board
+
+    def Get_Players(self) -> List[PlayerC]:
+        return self.__players_to_buy
+    
+    def Get_Costs(self) -> dict[str,int]:
+        player = self.__players_to_buy[0]
+        costs = {}
+        for city_id in self.__board.city_ids:
+            cost = self.__board.DjkstrasSearch(player.GetSourceCity(), city_id,player.GetName())
+            if self.__board.cityIds_to_CityClass[city_id].CityIsAvailable(player.GetName()):
+                cost += self.__board.cityIds_to_CityClass[city_id].GetCostInCity()
+                costs[city_id] = cost
+            else:
+                costs[city_id] = math.inf
+        return costs
+    
+    def Player_Finished_Buying(self,player:PlayerC):
+        if player == self.__players_to_buy[0]:
+            self.__players_to_buy.remove(player)
+            return True
+        else:
+            raise Exception("It's not this player's turn to finish buying.")
         
+    def Player_Buy_City(self,city_id:str):
+        player = self.__players_to_buy[0]
+        cost = self.__board.DjkstrasSearch(player.GetSourceCity(),city_id,player.GetName())
+        if self.__board.cityIds_to_CityClass[city_id].CityIsAvailable(player.GetName()):
+            cost += self.__board.cityIds_to_CityClass[city_id].GetCostInCity()
+            if player.CheckEnoughElectros(cost):
+                self.__board.cityIds_to_CityClass[city_id].PlayerBuyCity(player.GetName())
+                player.BuyCity(city_id,cost)
+                return True
+        return False
 
     
-    @staticmethod
-    def StartingRound(players:list[PlayerC],startingCities,Board:BoardC):
-        for player,city in startingCities.items():
-            if player.CheckEnoughElectros(10):
-                player.AddSourceCity(city)
-                Board.cityIds_to_CityClass[city].PlayerBuyCity(player.GetName())
-                
-                
-    @staticmethod
-    def BuyCities(players:list[PlayerC],board:BoardC,UI:UserInterfaceC):
-        for player in reversed(players):
-            passed = False
-            while not passed:
-                UI.DisplayBoard(board)
-                costs = [board.DjkstrasSearch(player.GetSourceCity(), city_id,player.GetName()) for city_id in board.city_ids]
-                choice_city = UI.GetCity(board.city_ids,costs,player.GetName(),player.GetElectros())
-                
-                if choice_city:
-
-                    cost_of_choice = board.DjkstrasSearch(player.GetSourceCity(), choice_city,player.GetName())
-
-                    if board.cityIds_to_CityClass[choice_city].CityIsAvailable(player.GetName()):
-                        cost_of_choice += board.cityIds_to_CityClass[choice_city].GetCostInCity()
-                        if player.CheckEnoughElectros(cost_of_choice):
-                            board.cityIds_to_CityClass[choice_city].PlayerBuyCity(player.GetName())
-                            player.BuyCity(choice_city,cost_of_choice)
-                else:
-                    passed = True
                 
                 
 
