@@ -14,6 +14,7 @@ class GameStateC:
         self.Phase = 1
         #         self.__players_to_regions = {3:["Brown","Yellow","Red","Purple"],4:["Brown","Green","Yellow","Red","Purple"],5:["Light Blue","Brown","Green","Yellow","Red","Purple"],6:["Light Blue","Brown","Green","Yellow","Red","Purple"]}
 
+    ### SET UP METHODS ###
     def Set_number_of_players(self, n: int):
         if 3 <= n <= 6:
             self.__NofPlayers = n
@@ -26,20 +27,14 @@ class GameStateC:
         self.__STARTING_ELECTROS = 50
         self.__ResourceMarket = R_Market()
         #TODO REGIONS
+    
     def Set_player_names(self, names: list[str]):
         if len(names) == self.__NofPlayers:
             self.__Players = [PlayerC(self.__STARTING_ELECTROS, name) for name in names]
             self.__PName_to_PClass = {player.GetName(): player for player in self.__Players}
             return True
         return False
-    
-    def Get_board(self) -> BoardC:
-        #TODO return a copy / display version
-        return self.__Board
-    
-    def Get_players(self) -> list[PlayerC]:
-        return self.__Players
-    
+
     def Set_starting_cities(self, starting_cities: dict[str, str]):
         #Check no two players start in the same city
         list_of_starting_cities = [city for city in starting_cities.values()]
@@ -57,49 +52,88 @@ class GameStateC:
                 raise IndexError(f"Player with name {player_name} not found.")
         return True
     
-    def Do_Phase_1_start(self):
-        if self.Phase != 1:
-            raise Exception("Not in Phase 1")
-        Phase1.Random_Assignment(self.__Players)
-        return True
-    
-    def UpdatePhase_1_to_2(self):
-        if self.Phase != 1:
-            raise Exception("Not in Phase 1")
-        self.Phase = 2
-        return True
-
-    def Do_Phase_1_order(self):
-        self.__Players = Phase1.Determine_Player_Order(self.__Players)
+    ### Getters ###
+    def Get_players(self) -> list[str]:
         return [player.GetName() for player in self.__Players]
     
+    def Get_board(self) -> BoardC:
+        return self.__Board.DisplayBoardInfo()
+    
+    
+    ### Phase 1 Methods ###
+    def __Do_Phase_1_start(self):
+        if self.Phase == 1:    
+            Phase1.Random_Assignment(self.__Players)
+            self.Phase = 2
+            return True
+        raise Exception("Not in Phase 1")
+
+    def __Do_Phase_1_order(self):
+        if self.Phase == 1:
+            self.__Players = Phase1.Determine_Player_Order(self.__Players)
+            self.Phase = 2
+            return [player.GetName() for player in self.__Players]
+        raise Exception("Not in Phase 1")
+    
+    ### Phase 2 Methods ###
     def Get_Current_Market(self):
         current_market, future_market = self.__PowerStationMarket.GiveMarket()
         return current_market, future_market
     
     def Start_Auction(self):
-        if self.__Round == 0:
-            self.Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players)
-        else:
-            self.Phase2 = Phase2(self.__PowerStationMarket,self.__Players)
-        return True
-    
-    def Buy_Power_Station(self, player_name: str, station: PowerStationC, cost:int) -> bool:
-        player = self.__PName_to_PClass.get(player_name)
-        if player:
-            return self.Phase2.BuyPowerStation(player, station, cost)
+        if self.Phase == 2:
+            if self.__Round == 0:
+                self.Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players)
+            else:
+                self.Phase2 = Phase2(self.__PowerStationMarket,self.__Players)
+            return True
         return False
-    def Finish_Auction(self) -> bool:
-        return self.Phase2.Finish_Auction()
     
-    def Do_Resource_Buying(self):
-        if self.Finish_Auction():
+    def Starting_Bid_on_Power_Station(self, player_name: str, station: PowerStationC) -> bool:
+        if self.Phase == 2:
+            player = self.__PName_to_PClass.get(player_name)
+            if player:
+                return self.Phase2.Select_Station_For_Auction(player, station)
+            raise IndexError(f'Player with name {player_name} not found.')
+        raise Exception("Not in Phase 2")
+    
+    def Place_Bid(self, player_name: str, station: PowerStationC, bid: int) -> bool:
+        if self.Phase ==2:
+            player = self.__PName_to_PClass.get(player_name)
+            if player:
+                return self.Phase2.Receive_Bid(player,station,bid)
+            raise IndexError(f'Player with name {player_name} not found.')
+        raise Exception("Not in Phase 2")
+    
+    def Resign_From_Bidding(self,player_name:str) -> tuple[str,int]:
+        if self.Phase == 2:
+            player = self.__PName_to_PClass.get(player_name)
+            if player:
+                winner, winning_bid = self.Phase2.Receive_Resign(player)
+                if winner:
+                    return winner.GetName(), winning_bid
+                return None, 0
+            raise IndexError(f'Player with name {player_name} not found.')
+        raise Exception("Not in Phase 2")
+    
+    def Get_Next_Bidder(self) -> str:
+        if self.Phase == 2:
+            bidder = self.Phase2.Get_Next_Bidder()
+            return bidder.GetName()
+        raise Exception("Not in Phase 2")
+
+    def Finish_Auction(self) -> bool:
+        if self.Phase2.Finish_Auction() and self.Phase == 2:
             self.Phase = 3
-            self.Phase3 = Phase3(self.__ResourceMarket,self.__Players)
-            self.Phase3.ResourceBuying(self.__ResourceMarket,[self.__Players][::-1])
-           
-        else:
-            raise Exception("Auction not finished yet.")
+            return True
+        raise Exception("Auction not finished yet.")
+    
+
+    ### Phase 3 Methods ###
+    def Do_Resource_Buying(self):
+        if self.Phase == 3:
+            self.Phase3 = Phase3(self.__ResourceMarket,self.__Players[::-1])
+        raise Exception("Not in Phase 3")
         
     def Get_Resource_Buyers(self) -> list[str]:
         if self.Phase != 3:
@@ -132,6 +166,7 @@ class GameStateC:
             return True
         raise Exception("Not all Players have finished buying resources yet.")
 
+    ### Phase 4 Methdos ###
     def Do_City_Buying(self):
         if self.Phase != 4:
             raise Exception("Not in Phase 4")
@@ -169,6 +204,50 @@ class GameStateC:
         else:
             raise IndexError(f'Player with name {player_name} was not found')
 
+    def Finish_City_Buying(self):
+        if self.Phase != 4:
+            raise Exception("Not in Phase 4")
+        return self.Phase4.Finshed_city_buying()
+ 
+    ### Phase 5 Methods ###
+    def Do_Bureaucracy(self):
+        if self.Phase != 5:
+            raise Exception("Not in Phase 5")
+        self.Phase5 = Phase5(self.__Players,self.__ResourceMarket,self.__PowerStationMarket)
+
+    def Get_Info_For_Bureaucracy(self):
+        if self.Phase != 5:
+            raise Exception("Not in Phase 5")
+
+        player,electros, number_of_cities, Powerstations,resources = self.Phase5.GetInfoForBureaucracy()
+        return player.GetName() ,electros, number_of_cities, Powerstations,resources
+    
+    def Player_Do_Bureaucracy(self,player_name:str,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]]):
+        if self.Phase != 5:
+            raise Exception("Not in Phase 5")
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            return self.Phase5.Player_Do_Bureaucracy(player,Stations_Powered_resources_Dict)
+        else:
+            raise IndexError(f'Player with name {player_name} was not found')
+    
+    def Check_Stage_Change_And_Win(self):
+        if self.Phase != 5:
+            raise Exception("Not in Phase 5")
+        winner = self.Phase5.CheckStageChangeAndWin()
+        if winner:
+            return winner.GetName()
+        self._Round += 1
+        self.Phase = 1
+        self.__Do_Phase_1_order()
+        self.Phase = 2
+        return None
+    
+
+
+
+        
+
           
 
 
@@ -191,27 +270,91 @@ class Phase2:
         self.__PS_Market = PS_Market
         self.__Players = players
         self.__Players_to_buy = list(players)
+        self.__Discount = True
+        self.__In_BRound = False
+        self.__BRound: BiddingRound
 
-
-    def BuyPowerStation(self,player:PlayerC,station:PowerStationC,cost:int):
-        if player in self.__Players_to_buy and player.CheckEnoughElectros(cost):
-            player.BuyPowerstation(self.__PS_Market.BuyPowerStation(station),cost)
-            self.__Players_to_buy.remove(player)
+    def Get_Next_Bidder(self) -> PlayerC:
+        if self.__In_BRound:
+            return self.__BRound.Get_Next_Bidder()
+        else:
+            raise Exception("Not in bidding round.")
+        
+    def Select_Station_For_Auction(self,station:PowerStationC,player:PlayerC):
+        if player == self.__Players_to_buy[0] and station in self.__PS_Market.GiveMarket()[0] and not self.__In_BRound:
+            
+            if self.__PS_Market.GiveMarket()[0][0] == station and self.__Discount:
+                bid = 1
+                self.__Discount = False
+            else:
+                bid = station.GetValue()
+            self.__BRound = BiddingRound(self.__Current_Station,self.__Players_to_buy,player,bid)
+            self.__In_BRound = True
             return True
         return False
+
+
+    def Receive_Bid(self,player:PlayerC,station:PowerStationC,cost:int):
+        if self.__In_BRound:
+            return self.__BRound.Place_Bid(player,cost)
+        raise Exception("Not in bidding round.")
+
+    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int]:
+        if self.__In_BRound:
+            self.__BRound.Resign_from_bidding(player)
+
+            if self.__BRound.Bidding_Over():
+                winner = self.__BRound.Get_Winner()
+                winning_bid = self.__BRound.Get_Winning_Bid()
+                self.__In_BRound = False
+                self.__Players_to_buy.remove(winner)
+
+
+                self.BuyPowerStation(winner,self.__BRound.GetStation(),winning_bid)
+                return winner, winning_bid
+            return None,0
+        
+        if not self.__In_BRound and player == self.__Players_to_buy[0]:
+            self.__Players_to_buy.remove(player)
+            return None,0
+        raise Exception("Not in bidding round.")
     
+
+    
+    #Returns list of players still to buy not in bidding round
     def Get_Players_to_buy(self) -> List[PlayerC]:
         return self.__Players_to_buy
     
-    def Finish_Auction(self):
-        self.__Players_to_buy = []
-        return True
-        
+    def Used_Discount(self)-> bool:
+        return not self.__Discount
 
+    def Finish_Auction(self):
+        if self.__Players_to_buy == []:
+            return True
+        else:
+            raise Exception("Not all players have resigned their right to buy.")
+        
 class Phase2StartingRound(Phase2):
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
         super().__init__(PS_Market,players)
 
+    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int]:
+        if self.__In_BRound:
+            self.__BRound.Resign_from_bidding(player)
+            if self.__BRound.Bidding_Over():
+                winner = self.__BRound.Get_Winner()
+                winning_bid = self.__BRound.Get_Winning_Bid()
+                self.__In_BRound = False
+                self.__Players_to_buy.remove(winner)
+
+
+                self.BuyPowerStation(winner,self.__BRound.GetStation(),winning_bid)
+                return winner, winning_bid
+            return None,0
+        
+        if not self.__In_BRound and player == self.__Players_to_buy[0]:
+            raise Exception("In starting round,players must buy a power station.")
+        raise Exception("Not in bidding round.")
     
     def Finish_Auction(self):
         if self.__Players_to_buy:
@@ -220,7 +363,59 @@ class Phase2StartingRound(Phase2):
             Phase1.Determine_Player_Order(self.__Players)
             return True
     
-
+class BiddingRound:
+    def __init__(self,Station:PowerStationC,Players:List[PlayerC],StartingPLayer:PlayerC,starting_bid:int):
+        self.__station = Station
+        self.__players = Players
+        self.__starting_player = StartingPLayer
+        self.__players_left = list(Players)
+        self.__current_bidder_index = self.__players.index(StartingPLayer)
+        self.__current_bid = starting_bid
+    
+    def Get_Next_Bidder(self) -> PlayerC:
+        if self.__current_bidder_index +1 == len(self.__players_left):
+            return self.__players_left[0]
+        return self.__players_left[self.__current_bidder_index + 1]
+    
+    def Get_Current_Bid(self) -> tuple[int,PowerStationC,PlayerC]:
+        return (self.__current_bid, self.__station, self.__players_left[self.__current_bidder_index])
+    
+    def Place_Bid(self,player:PlayerC,bid:int) -> bool:
+        if player == self.Get_Next_Bidder() and bid > self.__current_bid and player.CheckEnoughElectros(bid):
+            self.__current_bid = bid
+            self.__current_bidder_index = self.__players_left.index(player)
+            return True
+        raise Exception("Invalid bid or not this player's turn to bid.")
+    
+    def Resign_from_bidding(self,player:PlayerC):
+        current_bidder = self.__players_left[self.__current_bidder_index]
+        if player == self.Get_Next_Bidder():
+            self.__players_left.remove(player)
+            self.__current_bidder_index = self.__players_left.index(current_bidder)
+        else:
+            raise Exception("It's not this player's turn to resign from bidding.")
+    
+    def Bidding_Over(self) -> bool:
+        if len(self.__players_left) == 1:
+            return True
+        return False
+    
+    def Get_Winner(self) -> PlayerC:
+        if self.Bidding_Over():
+            return self.__players_left[0]
+        raise Exception("Bidding is not over yet.")
+    
+    def Get_Winning_Bid(self) -> int:
+        if self.Bidding_Over():
+            return self.__current_bid
+        raise Exception("Bidding is not over yet.")
+    
+    def Get_Starting_Player(self) -> PlayerC:
+        return self.__starting_player
+    
+    def GetStation(self) -> PowerStationC:
+        return self.__station
+    
 
 class Phase3:
 
@@ -257,7 +452,6 @@ class Phase3:
         if self.__Players_to_buy:
             return False
         return True
-    
     
 
 class Phase4:
@@ -299,35 +493,77 @@ class Phase4:
                 return True
         return False
 
+    def Finshed_city_buying(self) -> bool:
+        if self.__players_to_buy:
+            return False
+        return True
     
                 
                 
 
 class Phase5:
-    @staticmethod
-    def Bureaucracy(Players:list[PlayerC],UI:UserInterfaceC,ResourceMarket:R_Market,Stage:int,powerplantMarket:PS_Market,Board:BoardC)-> bool:
-        Powered = Phase5.PowerStations(Players,UI)
-        Phase5.RestockResources(ResourceMarket,Stage,len(Players))
-        return Phase5.CheckStageChangeAndWin(Stage,Players,powerplantMarket,Powered,UI,Board)
+    def __init__(self,Players:List[PlayerC],ResourceMarket:R_Market,PowerStationMarket:PS_Market,Board:BoardC,Stage:int,Used_Discount:bool):
+        self.__Players = list(Players)
+        self.__ResourceMarket = ResourceMarket
+        self.__PowerStationMarket = PowerStationMarket
+        self.__Board = Board
+        self.__Stage = Stage
+        self.__Players_left_to_do_bureaucracy = list(Players)
+        self.__Players_Powered_dict = {player:0 for player in Players}
+        self.Restock_Resources()
+        if not Used_Discount:
+            # Removes the discounted powerstation from the market is not used
+            self.__PowerStationMarket.RemoveDiscountedPowerStation()
+        
+    def Restock_Resources(self):
+        ResourceAmountResupply = {
+            3: [{'C':4, 'O':2, 'G':1, 'N':1}, {'C':5, 'O':3, 'G':2, 'N':1}, {'C':3, 'O':4, 'G':3, 'N':1}],
+            4: [{'C':5, 'O':3, 'G':2, 'N':1}, {'C':6, 'O':4, 'G':3, 'N':2}, {'C':4, 'O':5, 'G':4, 'N':2}],
+            5: [{'C':5, 'O':4, 'G':3, 'N':2}, {'C':7, 'O':5, 'G':3, 'N':3}, {'C':5, 'O':6, 'G':5, 'N':2}],
+            6: [{'C':7, 'O':5, 'G':3, 'N':2}, {'C':9, 'O':6, 'G':5, 'N':3}, {'C':6, 'O':7, 'G':6, 'N':3}]
+        }
+        self.__NofPlayers = len(self.__Players)
+        for resource in ['C','O','G','N']:
+            self.__ResourceMarket.Add_Resource(resource, ResourceAmountResupply[self.__NofPlayers][self.__Stage][resource])
+        
+    def GetInfoForBureaucracy(self) -> List[PlayerC,int,int,List[PowerStationC],dict[str,int]]:
+        if not self.__Players_left_to_do_bureaucracy:
+            raise Exception("All players have completed bureaucracy.")
+        player = self.__Players_left_to_do_bureaucracy[0]
+        return [player, player.GetElectros(),len(player.GetCities() ),player.GetPowerStations(), player.GetResources()]
+
+    def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC]):
+        if player == self.__Players_left_to_do_bureaucracy[0]:
+            stations = player.GetPowerStations()
+            if set(Stations_Powered_resources_Dict.keys()).issubset(set(stations)):
+                for station in Stations_Powered_resources_Dict.keys():
+                    if sum(Stations_Powered_resources_Dict[station].values()) == 0 and station.GetFuelAmount() > 0:
+                        result,cities_powered = True,0 # Chooses not to power this station
+                    else:
+                        result,cities_powered = Phase5.CheckStationsFuel({station:Stations_Powered_resources_Dict[station]},player)
+                        if not result:
+                            raise Exception("Player does not have enough resources to power the selected stations.")
+                    total_cities_powered += cities_powered
+                if result:
+                    if total_cities_powered >= len(player.GetCities()):
+                        total_cities_powered = len(player.GetCities())
+                    player.Pay(player.Pay_formulae(total_cities_powered))
+                    self.__Players_left_to_do_bureaucracy.remove(player)
+                    self.__Players_Powered_dict[player] = total_cities_powered
+                    return total_cities_powered
+                else:
+                    raise Exception("Player does not have enough resources to power the selected stations.")
+        else:
+            raise Exception("It's not this player's turn to do bureaucracy.")
+
+    def Pay_formulae(self,number_of_cities:int) -> int:
+        #Computes the nth term of the sequence:
+        #y(n) = 10 + 12n - floor(n^2 / 4)
+        return 10 + 12 * number_of_cities - int(number_of_cities ** 2 / 4)
+
 
     @staticmethod
-    def PowerStations(Players:list[PlayerC],UI:UserInterfaceC) -> dict[PlayerC,int]:
-        Powered = {}
-        for player in Players:
-            Correct = False
-            while not Correct:
-                Station_fuel =  UI.choose_power_stations_to_power(player)
-                result,CitiesPowered = Phase5.CheckStationsFuel(Station_fuel,player)
-                if result:
-                    #TODO fix paydict with correct
-                    payDict = {0: 10,1: 22, 2: 49,   3: 64,  4: 81,5: 97, 6: 128,    7: 134, 8: 139,    9: 142,10: 145,    11: 148,12: 149,    13: 150}
-                    player.Pay(payDict[CitiesPowered])
-                    Powered[player] = result
-                    Correct = True
-        return Powered
-            
-    @staticmethod
-    def CheckStationsFuel(Station_fuel:dict[PowerStationC, dict[str, int]],player:PlayerC)-> (int,bool):
+    def CheckStationsFuel(Station_fuel:dict[PowerStationC, dict[str, int]],player:PlayerC)-> tuple[int,bool]:
         
         Players_resources = player.GetResources()
         citiesPowered = 0
@@ -347,50 +583,36 @@ class Phase5:
             player.ChangeResources(Players_resources)
         return True,citiesPowered
 
-
-
-    @staticmethod
-    def RestockResources(ResourceMarket:R_Market,Stage:int,NofPlayers:int):
-        ResourceAmountResupply = {
-            3: [{'C':4, 'O':2, 'G':1, 'N':1}, {'C':5, 'O':3, 'G':2, 'N':1}, {'C':3, 'O':4, 'G':3, 'N':1}],
-            4: [{'C':5, 'O':3, 'G':2, 'N':1}, {'C':6, 'O':4, 'G':3, 'N':2}, {'C':4, 'O':5, 'G':4, 'N':2}],
-            5: [{'C':5, 'O':4, 'G':3, 'N':2}, {'C':7, 'O':5, 'G':3, 'N':3}, {'C':5, 'O':6, 'G':5, 'N':2}],
-            6: [{'C':7, 'O':5, 'G':3, 'N':2}, {'C':9, 'O':6, 'G':5, 'N':3}, {'C':6, 'O':7, 'G':6, 'N':3}]
-        }
-        for resource in ['C','O','G','N']:
-            ResourceMarket.Add_Resource(resource, ResourceAmountResupply[NofPlayers][Stage][resource])
-            
-    @staticmethod
-    def RestockStations():
-        pass
-    @staticmethod
-    def CheckStageChangeAndWin(CurrentStage:int,players:list[PlayerC],PowerPlantMarket:PS_Market,Powered:dict[PlayerC,int],UI:UserInterfaceC,Board:BoardC)->bool:
+    def CheckStageChangeAndWin(self)->PlayerC|None:
+        if self.__Players_left_to_do_bureaucracy:
+            raise Exception("Not all players have completed bureaucracy.")
+        
         stage2ReqsNoPlayers = {3:7,4:7,5:7,6:6}
         winCondition = {3:17,4:17,5:15,6:14}
         #stage 2 check
-        if CurrentStage == 1:
-            for player in players:
-                if len(player.GetCities()) >= stage2ReqsNoPlayers[len(players)]:
-                    CurrentStage = 2
-                    PowerPlantMarket.Stage2()
-                    Board.ChangeStage(CurrentStage)
-        if CurrentStage != 3:
-            if PowerPlantMarket.Stage3():
-                CurrentStage = 3
-                Board.ChangeStage(CurrentStage)
-        players.sort()
-        if len(players[0].GetCities()) >= winCondition[len(players)]:
+        if self.__Stage == 1:
+            for player in self.__Players:
+                if len(player.GetCities()) >= stage2ReqsNoPlayers[len(self.__Players)]:
+                    self.__Stage = 2
+                    self.__PowerStationMarket.Stage2()
+                    self.__Board.ChangeStage(self.__Stage)
+        if self.__Stage != 3:
+            if self.__PowerStationMarket.Stage3():
+                self.__Stage = 3
+                self.__Board.ChangeStage(self.__Stage)
+        self.__Players.sort()
+        if len(self.__Players[0].GetCities()) >= winCondition[len(self.__Players)]:
             highest_score = 0
             highest_player:list[PlayerC] = []
-            for player in players:
-                if Powered[player] > highest_score:
-                    highest_score = Powered[player]
+            for player in self.__Players:
+                if self.__Players_Powered_dict[player] > highest_score:
+                    highest_score = self.__Players_Powered_dict[player]
                     highest_player = [player]
-                elif Powered[player] == highest_score:
+                elif self.__Players_Powered_dict[player] == highest_score:
                     highest_player.append(player)
             if len(highest_player) == 1:
-                UI.DisplayMessage(f"{highest_player[0].GetName()} has won")
-                exit()
+                return highest_player[0]
+            # If there's a tie, we need to check who has the most money
             if len(highest_player) > 1:
                 Most_Money = 0
                 Player_With_most_money:PlayerC
@@ -399,43 +621,10 @@ class Phase5:
                     if Electros > Most_Money:
                         Player_With_most_money = player
                         Most_Money = Electros
-            UI.DisplayMessage(UI.DisplayMessage(f"{Player_With_most_money.GetName()} has won"))
-            return False
-        return True
+                        #player with most money win
+                return Player_With_most_money
+        return None
 
 
-                    
-
-
-
-
-
-                    
-            
-            
-
-
-
-if __name__ == '__main__':
-    def Phase3Test():
-        plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
-        market = PS_Market("stations.JSON",3)
-        for player in plays:
-
-            station = market.GiveMarket()[0][0]
-            cost = station.GetValue()
-            player.BuyPowerstation(market.BuyPowerStation(station),cost)
-        
-        Phase3.ResourceBuying(R_Market(),plays,UserInterfaceC())
-    
-    def Phase4Test():
-        plays = [PlayerC(50,"Jane"),PlayerC(50,"luca"),PlayerC(50,"Monty")]
-        B = BoardC('board.JSON',0,["Brown","Yellow","Red","Purple"])
-        Phase4.StartingRound(plays,dict(zip(plays,['mainz','ulm','berlin'])),B)
-        Phase4.BuyCities(plays,B,UserInterfaceC())
-
-    def WholeGameTest():
-        GameC(UserInterfaceC())
-    WholeGameTest()
 
 

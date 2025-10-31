@@ -1,5 +1,7 @@
 import json
 import math
+import copy
+
 
 class BoardC:
     def __init__(self,filename:str,map,regions:list[str]):
@@ -73,11 +75,28 @@ class BoardC:
         return distances[Connection_index]
     
     def ChangeStage(self,stage:int):
-
         for cityid in self.city_ids:
             city = self.cityIds_to_CityClass[cityid]
             city.UpdateStage(stage)
         return
+    
+    def DisplayBoardInfo(self):
+        # Return a JSON of the board to prevent external modification
+        info = {
+            "regions": self._regions.copy(),
+            "cities": {
+                cid: {
+                    "region": city.Region,
+                    "owners": city.GetPlayersInCity(),
+                    "Available": city.CityIsAvailable(),
+                    "cost": city.GetCostInCity()
+                } for cid, city in self.cityIds_to_CityClass.items()
+            },
+            "connections": self.adjancency_matrix
+        }
+        return info
+
+    
 
 
         
@@ -100,6 +119,7 @@ class City:
                 self.__PlayersOwn.append(PlayerName)  
         else:
             pass # TODO create an error
+
     def GetCostInCity(self):
         return (len(self.__PlayersOwn)+2) * 5
         
@@ -108,6 +128,9 @@ class City:
             return True
         else:
             return False
+        
+    def GetPlayersInCity(self):
+        return list(self.__PlayersOwn)
     
     def CityIsAvailable(self,PlayerName):
         if len(self.__PlayersOwn) != self.__Stage and PlayerName not in self.__PlayersOwn:

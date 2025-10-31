@@ -6,7 +6,7 @@ PLUGGED = 0
 UNPLUGGED = 1
 class PS_Market:
     def __init__(self,PowerStationsFile,NofPlayers):
-        # How many powerplants to remove: {players:(unplugged,unplugged)}
+        # How many powerplants to remove: {players:(unplugged,plugged)}
         self.__RemovePowerPlants = {3:(2,6),4:(1,3),5:(0,0),6:(0,0)}
         self.__Deck: list[PowerStationC] = []
         self.__PluggedPowerStations,self.__UnpluggedPowerStations = self.ExtractStationsFromFile(PowerStationsFile)
@@ -49,7 +49,7 @@ class PS_Market:
         if self.__stage != 3:
             return self.__Market[:4] , self.__Market[4:]
         else:
-            return self.__Market
+            return self.__Market , []
         
     def BuyPowerStation(self,Station:PowerStationC):
 
@@ -65,12 +65,23 @@ class PS_Market:
                     self.__Market.append(self.__Deck.pop(0))
                     self.__Market.sort()                
                 return Station
+            
     def GetDeck(self):
         return self.__Deck
+
+    def RemoveDiscountedPowerStation(self):
+        if self.__stage != 3:
+            self.__Market.pop(0)
+            self.__Market.append(self.__Deck.pop(0))
+            self.__Market.sort()
+        else:
+            raise ValueError("Cannot remove discounted powerstation in stage 3")
+
     def Stage2(self):
         self.BuyPowerStation(self.GiveMarket()[0][0].GetValue())
         self.__stage = 2
         return
+
     def Stage3(self) -> bool:
         if self.__Market[-1].GetValue() == math.inf:
             self.__stage = 3
@@ -80,10 +91,6 @@ class PS_Market:
             return True
         return False
 
-        
-    
-
-    
 
 
 class Stage3(PowerStationC):
@@ -110,7 +117,6 @@ class Stage3(PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
         return self.__Value < other.__Value
     
-
 
 if __name__ == "__main__":
     p = PS_Market("stations.JSON",3)
