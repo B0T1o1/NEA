@@ -108,11 +108,7 @@ class PlayerC:
             
 
 
-if __name__ ==  "__main__":
-    p = PowerStationC(3,'O',2,1)
-    player = PlayerC(50,"jane")
 
-    print(player.GetResourceSpace())
     
 
 
