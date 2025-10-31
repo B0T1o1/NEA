@@ -96,11 +96,6 @@ class BoardC:
         }
         return info
 
-    
-
-
-        
-
         
         
 

@@ -1,7 +1,7 @@
 from Player import PlayerC
 import random
 from Board import BoardC
-from Resource_Market import R_Market
+from gamelogic.Resource_Market import R_Market
 from PowerStationMarket import PS_Market
 from PowerStation import PowerStationC
 from typing import List
@@ -56,10 +56,24 @@ class GameStateC:
     def Get_players(self) -> list[str]:
         return [player.GetName() for player in self.__Players]
     
-    def Get_board(self) -> BoardC:
+    def Get_board(self) -> dict:
         return self.__Board.DisplayBoardInfo()
     
+    def Get_round(self) -> int:
+        return self._Round
     
+    def Get_phase(self) -> int:
+        return self.Phase
+    
+    def Get_stage(self) -> int:
+        return self.__stage
+    
+    """Game Logic Methods Below"""
+    def Start_Game(self):
+        self.__Do_Phase_1_order()
+        self.Phase = 2
+        return True
+
     ### Phase 1 Methods ###
     def __Do_Phase_1_start(self):
         if self.Phase == 1:    
