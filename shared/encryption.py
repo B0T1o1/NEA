@@ -1,7 +1,7 @@
 
 
 class RSA():
-
+    
     @staticmethod    
     def encrypt(plaintext:str, public_key:tuple) -> str:
         # Computes ciphertext = plaintext^e mod N
