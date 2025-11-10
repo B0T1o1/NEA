@@ -1,9 +1,9 @@
-from gamelogic.Player import PlayerC
+from .Player import PlayerC
 import random
-from gamelogic.Board import BoardC
-from gamelogic.Resource_Market import R_Market
-from gamelogic.PowerStationMarket import PS_Market
-from gamelogic.PowerStation import PowerStationC
+from .Board import BoardC
+from .Resource_Market import R_Market
+from .PowerStationMarket import PS_Market
+from .PowerStation import PowerStationC
 from typing import List
 import math
 
@@ -36,7 +36,6 @@ class GameStateC:
             return True
         return False
     
-
     def Set_starting_cities(self, starting_cities: dict[str, str]):
         #Check no two players start in the same city
         list_of_starting_cities = [city for city in starting_cities.values()]

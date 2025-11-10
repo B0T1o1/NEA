@@ -59,6 +59,9 @@ class ClientC():
                             
                         else:
                             self.UI.UI.DisplayMessage('Registration failed. Username may already be taken.')
+                    if message['MessageType'] == 'GameStartNotification':
+                        game_id, players = MESSAGES.GameStartNotification.parse_payload(message)
+                        self.UI.DisplayPlayerList(players)
                 else:
                     print('Server closed the connection.')
                     self.kill = True
@@ -77,6 +80,7 @@ class ClientC():
         try:
             while not self.kill:
                 time.sleep(1)
+                
         except KeyboardInterrupt:
             print("Shutting down client.")
             self.kill = True

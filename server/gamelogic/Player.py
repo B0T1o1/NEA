@@ -1,4 +1,4 @@
-from gamelogic.PowerStation import PowerStationC
+from .PowerStation import PowerStationC
 
 class PlayerC:
     def __init__(self,Electros:int,name):

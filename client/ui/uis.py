@@ -17,6 +17,8 @@ class UIC():
         return self.UI.GetLogin_or_Register()
     def GetRegisterDetails(self) -> tuple[str,str]:
         return self.UI.GetRegisterDetails()
+    def DisplayPlayerList(self,players:list[str]):
+        return self.UI.DisplayPlayerList(players)
 class TUIC(UIC):
     def __init__(self):
         pass
@@ -43,6 +45,11 @@ class TUIC(UIC):
         username = input('Enter desired username: ')
         password = input('Enter desired password: ')
         return (username,password)
+    
+    def DisplayPlayerList(self,players:list[str]):
+        print('Current players in the game:')
+        for player in players:
+            print(f'- {player}')
     
 
 class GUIC(UIC):

@@ -48,3 +48,19 @@ class LoginConfirmation(Message):
     @staticmethod
     def parse_payload(payload) -> bool:
         return payload['success']
+
+class GameStartNotification(Message):
+    @staticmethod
+    def construct_payload(game_id:int, players:list[str]):
+        return str({'MessageType':'GameStartNotification','game_id':game_id,'players':players})
+    @staticmethod
+    def parse_payload(payload) -> tuple[int,list[str]]:
+        return (payload['game_id'], payload['players'])
+    
+class BoardMessage(Message):
+    @staticmethod
+    def construct_payload(board_state:dict):
+        return str({'MessageType':'BoardMessage','board_state':board_state})
+    @staticmethod
+    def parse_payload(payload) -> dict:
+        return payload['board_state']

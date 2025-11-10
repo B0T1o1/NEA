@@ -1,16 +1,16 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import sqlite3
 import hashlib
 import socket
 import threading
-import struct
 import time
 import datetime
 from shared import MESSAGES
 from shared.encryption import RSA
+from .gamelogic.GameState import GameStateC
+from typing import List
 
 class Server:
     def __init__(self, host: str = '127.0.0.1', port: int = 65432):
@@ -20,6 +20,11 @@ class Server:
         self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,True)
         self.server_socket.bind((self.host,self.port))
         self.clients = []
+        self.queue = []
+        self.ready_clients = []
+        self.lobby_game_index = 0
+        self.games = [[]]
+        self.game_states: dict[int, GameStateC] = {}
         self.MAX_CLIENTS = 6
         self.MIN_CLIENTS = 3
         self.kill = False
@@ -33,19 +38,13 @@ class Server:
                 self.server_socket.listen()
                 connn, addd = self.server_socket.accept()
                 self.clients.append(connn)
+                self.queue.append(connn)
                 threading.Thread(target=self.Set_up_client,args=(connn,)).start()
-
-                if len(self.clients) >= self.MIN_CLIENTS and not Start_of_timer:
-                    Start_of_timer = datetime.datetime.now()
-                    print('Minimum clients connected. Ready to start operations.')
             except socket.timeout:
                 pass
-        print("Connection loop finished. Starting operations.")
-        threading.Thread(target=self.handle_operations_loop,daemon=True).start()
             
     
     def Set_up_client(self,client_socket:socket.socket):
-        private_key = None
         db_path = os.path.join(os.path.dirname(__file__), 'data', 'usersdata.db')
         try:
             RSA_keypair = RSA.generate_keypair()
@@ -69,9 +68,13 @@ class Server:
                         if cur.fetchall():
                             print(f"User {username} logged in successfully.")
                             client_socket.sendall(MESSAGES.LoginConfirmation.construct_payload(True).encode())
+                            self.ready_clients.append((username,client_socket))
+                            self.queue.remove(client_socket)
+                            break
                         else:
                             print(f"User {username} failed to log in.")
                             client_socket.sendall(MESSAGES.LoginConfirmation.construct_payload(False).encode())
+                            client_socket.sendall(MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
                         conn.close()
 
                     elif message['MessageType'] == 'RegisterRequest':
@@ -92,16 +95,10 @@ class Server:
                                 client_socket.sendall(MESSAGES.RegisterResponse.construct_payload(True).encode())
                             client_socket.sendall(MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
                             conn.close()
+                            
 
                 if not data:
                     break # Client disconnected
-                
-                # You will need to add logic here to handle login/registration
-                # and other messages from the client.
-                # For now, it just keeps the connection open.
-                print(f"Received data: {data.decode()}")
-
-
         except ConnectionResetError:
             print('Client disconnected abruptly.')
         finally:
@@ -110,22 +107,53 @@ class Server:
                 self.clients.remove(client_socket)
             client_socket.close()
 
-    def handle_operations_loop(self):
-        while not self.kill:
-            for client in self.clients:
-                try:
-                    message = 'Server broadcast message'
-                    client.sendall(message.encode())
-                except BrokenPipeError:
-                    print('Failed to send message to a client.')
-            time.sleep(5)
+
+    def start_game(self, game_id):
+        players:List[tuple[str, socket.socket]] = self.games[game_id]
+        print(f"Starting game with players: {[p[0] for p in players]}")
+        self.game_states[game_id] = GameStateC()
+        self.game_states[game_id].Set_number_of_players(len(players))
+        self.game_states[game_id].Set_player_names([p[0] for p in players])
+        self.game_states[game_id].Set_settings() # default settings for now
+        GameStartMessage = MESSAGES.GameStartNotification.construct_payload(game_id, self.game_states[game_id].Get_players())
+        BoardMessage = MESSAGES.BoardMessage.construct_payload(self.game_states[game_id].Get_board())
+        for player_index, (username, client_socket) in enumerate(players):
+            try:
+                
+                client_socket.sendall(GameStartMessage.encode())
+                client_socket.sendall(BoardMessage.encode())
+                threading.Thread(target=self.Handle_Player,args=(game_id, client_socket, username)).start()
+                
+            except BrokenPipeError:
+                print(f'Failed to send GameStartNotification to {username}.')
     
+    def Handle_Player(self, game_id,client_socket:socket.socket,username:str):
+        # Placeholder for handling player actions during the game
+        pass
+        
+
+    
+
+
+    def check_and_start_games(self):
+        while not self.kill:
+            if len(self.ready_clients) >= self.MIN_CLIENTS:
+                self.games.append([])
+                self.lobby_game_index = len(self.games) - 1
+                while len(self.games[self.lobby_game_index]) < self.MAX_CLIENTS:
+                    self.games[self.lobby_game_index].append(self.ready_clients.pop(0))
+                if len(self.games[self.lobby_game_index]) >= self.MIN_CLIENTS:
+                    self.start_game(self.lobby_game_index)
+                    self.lobby_game_index += 1
+
+            time.sleep(5)  # Check every 5 seconds
+
         
 
 
 
     def run(self):
-        connection_thread = threading.Thread(target=self.connection_listen_loop)
+        connection_thread = threading.Thread(target=self.connection_listen_loop,daemon=True)
         connection_thread.start()
         try:
             connection_thread.join() # Wait for connection loop to finish
@@ -134,6 +162,7 @@ class Server:
             while not self.kill:
                 #This loop is for keeping the server alive, can add monitoring or commands here
                 time.sleep(1)
+        
                 
         except KeyboardInterrupt:
             print("\nShutting down server.")
