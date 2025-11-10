@@ -1,4 +1,4 @@
-from PowerStation import PowerStationC
+from gamelogic.PowerStation import PowerStationC
 import json
 import random
 import math

@@ -1,9 +1,9 @@
-from Player import PlayerC
+from gamelogic.Player import PlayerC
 import random
-from Board import BoardC
+from gamelogic.Board import BoardC
 from gamelogic.Resource_Market import R_Market
-from PowerStationMarket import PS_Market
-from PowerStation import PowerStationC
+from gamelogic.PowerStationMarket import PS_Market
+from gamelogic.PowerStation import PowerStationC
 from typing import List
 import math
 
@@ -20,12 +20,13 @@ class GameStateC:
             self.__NofPlayers = n
             return True
         raise ValueError("Number of players must be between 3 and 6.")
-    
-    def Set_settings(self,BoardFile = "board.JSON",StationFile = "stations.JSON", starting_electros = 40,self_regions:List[str]= None):
-        self.__Board = BoardC(BoardFile, map,self.__regions)
+
+    def Set_settings(self,BoardFile = "data/board.JSON",StationFile = "data/stations.JSON", starting_electros = 50,self_regions:List[str]= ["Brown","Yellow","Red","Purple"],map:str='G'):
         self.__PowerStationMarket = PS_Market(StationFile,self.__NofPlayers)
-        self.__STARTING_ELECTROS = 50
+        self.__STARTING_ELECTROS = starting_electros
         self.__ResourceMarket = R_Market()
+        self.__regions = self_regions
+        self.__Board = BoardC(BoardFile, map,self.__regions)
         #TODO REGIONS
     
     def Set_player_names(self, names: list[str]):
@@ -34,6 +35,7 @@ class GameStateC:
             self.__PName_to_PClass = {player.GetName(): player for player in self.__Players}
             return True
         return False
+    
 
     def Set_starting_cities(self, starting_cities: dict[str, str]):
         #Check no two players start in the same city
@@ -68,6 +70,8 @@ class GameStateC:
     def Get_stage(self) -> int:
         return self.__stage
     
+
+
     """Game Logic Methods Below"""
     def Start_Game(self):
         self.__Do_Phase_1_order()
@@ -130,12 +134,18 @@ class GameStateC:
             raise IndexError(f'Player with name {player_name} not found.')
         raise Exception("Not in Phase 2")
     
+    def Get_Next_Bidder_in_Round(self) -> str:
+        if self.Phase == 2:
+            bidder = self.Phase2.Get_Next_Bidder_in_Round()
+            return bidder.GetName()
+        raise Exception("Not in Phase 2")
+
     def Get_Next_Bidder(self) -> str:
         if self.Phase == 2:
             bidder = self.Phase2.Get_Next_Bidder()
             return bidder.GetName()
         raise Exception("Not in Phase 2")
-
+    
     def Finish_Auction(self) -> bool:
         if self.Phase2.Finish_Auction() and self.Phase == 2:
             self.Phase = 3
@@ -288,12 +298,17 @@ class Phase2:
         self.__In_BRound = False
         self.__BRound: BiddingRound
 
-    def Get_Next_Bidder(self) -> PlayerC:
+    def Get_Next_Bidder_in_Round(self) -> PlayerC:
         if self.__In_BRound:
             return self.__BRound.Get_Next_Bidder()
         else:
             raise Exception("Not in bidding round.")
-        
+
+    def Get_Next_Bidder(self) -> int:
+        if not self.__In_BRound:
+            return self.__Players_to_buy[0]
+        raise Exception("In bidding round.")
+
     def Select_Station_For_Auction(self,station:PowerStationC,player:PlayerC):
         if player == self.__Players_to_buy[0] and station in self.__PS_Market.GiveMarket()[0] and not self.__In_BRound:
             
@@ -540,11 +555,11 @@ class Phase5:
         for resource in ['C','O','G','N']:
             self.__ResourceMarket.Add_Resource(resource, ResourceAmountResupply[self.__NofPlayers][self.__Stage][resource])
         
-    def GetInfoForBureaucracy(self) -> List[PlayerC,int,int,List[PowerStationC],dict[str,int]]:
+    def GetInfoForBureaucracy(self) -> tuple[PlayerC,int,int,List[PowerStationC],dict[str,int]]:
         if not self.__Players_left_to_do_bureaucracy:
             raise Exception("All players have completed bureaucracy.")
         player = self.__Players_left_to_do_bureaucracy[0]
-        return [player, player.GetElectros(),len(player.GetCities() ),player.GetPowerStations(), player.GetResources()]
+        return (player, player.GetElectros(),len(player.GetCities() ),player.GetPowerStations(), player.GetResources())
 
     def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC]):
         if player == self.__Players_left_to_do_bureaucracy[0]:
