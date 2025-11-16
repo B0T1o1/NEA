@@ -1,12 +1,10 @@
-
-
 from .ui.uis import UIC
 import socket
 import threading
 import time
 
 from shared import MESSAGES
-from shared.encryption import RSA
+from shared.encryption import RSA 
 
 class ClientC():
     def __init__(self,host = '127.0.0.1',port=65432):

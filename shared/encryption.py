@@ -1,37 +1,44 @@
+from sympy import nextprime
+import random
+
 class RSA:
     
     @staticmethod    
     def encrypt(plaintext:str, public_key:tuple) -> int:
+        """Encrypts plaintext using the RSA public key."""
         N, e = public_key
+        # Add random padding to plaintext
+        padding = random.randrange(10**5,10**6)
+        plaintext = str(padding)+ plaintext
+        
         m = int.from_bytes(plaintext.encode(), 'big')
         return pow(m, e, N)
 
     @staticmethod
     def decrypt(ciphertext:int, private_key:tuple) -> str:
+        """Decrypts ciphertext using the RSA private key."""
         N, d = private_key
         m = pow(ciphertext, d, N)
         bytelength = (m.bit_length() + 7) // 8
-        try:
-            return m.to_bytes(bytelength, 'big').decode()
-        except UnicodeDecodeError:
-            return m.to_bytes(bytelength, 'big')
+        return m.to_bytes(bytelength, 'big').decode()[6:]  # remove padding
 
-    @staticmethod
-    def generate_keys(p:int, q:int, e:int):
-        N = p * q
-        phi = (p - 1) * (q - 1)
-        d = pow(e, -1, phi)
-        return (N, e), (N, d)
+
+
 
     @staticmethod
     def generate_large_prime(bits:int) -> int:
-        from sympy import nextprime
-        import random
-        rand_num = random.getrandbits(bits) | (1 << (bits - 1)) | 1
-        return nextprime(rand_num)
+        """Generates a large prime number with the specified bit length.
+         Uses sympy's nextprime function for simplicity.
+         Need to double check is prime as miller-rabin can produce false positives."""
+
+        rand_num = random.getrandbits(bits) | (1 << (bits - 1)) | 1 # ensure it's odd and has the correct bit length
+        return nextprime(rand_num) 
     
     @staticmethod
     def gcd_extended(a:int, b:int):
+        """Extended Euclidean Algorithm.
+        Returns a tuple (g, x, y) such that a*x + b*y = g = gcd(a, b)
+        """
         if b == 0:
             return (a,1,0)
         g,x1,y1 = RSA.gcd_extended(b,a%b)
@@ -39,14 +46,17 @@ class RSA:
     
     @staticmethod
     def generate_keypair(bits:int=1024):
+        """Generates an RSA keypair with the specified bit length."""
         e = 65537
-        for _ in range(10):
+        while True:
             p = RSA.generate_large_prime(bits//2)
             q = RSA.generate_large_prime(bits//2)
             phi = (p-1)*(q-1)
-            g,_,_ = RSA.gcd_extended(e, phi)
+            g,x,y = RSA.gcd_extended(e, phi)
+
             if g == 1:
-                return RSA.generate_keys(p, q, e)
-        raise ValueError("Failed to generate valid keypair")
+                n = p * q
+                d = x % phi
+                return (n, e), (n, d) # public and private keys
 
-
+    
