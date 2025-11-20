@@ -12,6 +12,7 @@ class GameStateC:
         self.__stage = 1
         self._Round = 0
         self.Phase = 1
+        self.__startingcites = []
         #         self.__players_to_regions = {3:["Brown","Yellow","Red","Purple"],4:["Brown","Green","Yellow","Red","Purple"],5:["Light Blue","Brown","Green","Yellow","Red","Purple"],6:["Light Blue","Brown","Green","Yellow","Red","Purple"]}
 
     ### SET UP METHODS ###
@@ -33,10 +34,12 @@ class GameStateC:
         if len(names) == self.__NofPlayers:
             self.__Players = [PlayerC(self.__STARTING_ELECTROS, name) for name in names]
             self.__PName_to_PClass = {player.GetName(): player for player in self.__Players}
+            random.shuffle(self.__Players)
             return True
         return False
     
-    def Set_starting_cities(self, starting_cities: dict[str, str]):
+
+    def __Set_starting_cities(self, starting_cities: dict[str, str]):
         #Check no two players start in the same city
         list_of_starting_cities = [city for city in starting_cities.values()]
         if len(list_of_starting_cities) != len(set(list_of_starting_cities)):
@@ -53,6 +56,12 @@ class GameStateC:
                 raise IndexError(f"Player with name {player_name} not found.")
         return True
     
+    def Set_starting_cities(self,playername:str,city:str):
+        if city in self.__startingcites:
+            return False
+        else:
+            self.__startingcites
+
     ### Getters ###
     def Get_players(self) -> list[str]:
         return [player.GetName() for player in self.__Players]

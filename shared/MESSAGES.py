@@ -1,5 +1,5 @@
 #Different types of messages over sockets can be defined here
-
+from typing import List
 class Message():
     @staticmethod
     def construct_payload(self):
@@ -57,10 +57,27 @@ class GameStartNotification(Message):
     def parse_payload(payload) -> tuple[int,list[str]]:
         return (payload['game_id'], payload['players'])
     
-class BoardMessage(Message):
+class BoardDisplay(Message):
     @staticmethod
-    def construct_payload(board_state:dict):
-        return str({'MessageType':'BoardMessage','board_state':board_state})
+    def construct_payload(board_state:dict) -> str:
+        return str({'MessageType':'BoardDisplay','board_state':board_state})
     @staticmethod
     def parse_payload(payload) -> dict:
         return payload['board_state']
+    
+class BuyStartingCityRequest(Message):
+    @staticmethod
+    def construct_payload(current_player):
+        return str({'MessageType':'BuyStartingCityRequest', 'current_player':current_player})
+    @staticmethod
+    def parse_payload(payload) -> str:
+        return payload['current_player']
+    
+class BuyStartingCityResponse(Message):
+    @staticmethod
+    def construct_payload(self,city_id:str):
+        return str({'MessageType':'BuyStartingCityResponse','city': city_id})
+    def parse_payload(payload) -> str:
+        return payload['city']
+
+    

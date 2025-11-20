@@ -13,6 +13,7 @@ class ClientC():
         self.UI = UIC()
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.kill = False
+        self.username = ''
 
     def connect(self):
         try:
@@ -35,7 +36,7 @@ class ClientC():
                     message = eval(data.decode())
                     MessageType = message['MessageType']
                     print(f"Received message of type: {MessageType}")
-                    if message['MessageType'] == 'LoginRequest':
+                    if MessageType == 'LoginRequest':
                         server_public_key = MESSAGES.LoginRequest.parse_payload(message)
                         choice = self.UI.GetLogin_or_Register()
                         if choice == 'login':
@@ -44,22 +45,33 @@ class ClientC():
                         if choice == 'register':
                             username,password = self.UI.GetRegisterDetails()
                             self.client_socket.sendall(str(RSA.encrypt(MESSAGES.RegisterRequest.construct_payload(username,password),server_public_key)).encode())
-                    if message['MessageType'] == 'LoginConfirmation':
+                    if MessageType == 'LoginConfirmation':
                         success = MESSAGES.LoginConfirmation.parse_payload(message)
                         if success:
+                            self.username = username
                             self.UI.UI.DisplayMessage('Login successful!')
                         else:
                             self.UI.UI.DisplayMessage('Login failed. Please check your credentials.')
-                    if message['MessageType'] == 'RegisterResponse':
+                    if MessageType == 'RegisterResponse':
                         success = MESSAGES.RegisterResponse.parse_payload(message)
                         if success:
                             self.UI.UI.DisplayMessage('Registration successful! You can now log in.')
                             
                         else:
                             self.UI.UI.DisplayMessage('Registration failed. Username may already be taken.')
-                    if message['MessageType'] == 'GameStartNotification':
+                    if MessageType == 'GameStartNotification':
                         game_id, players = MESSAGES.GameStartNotification.parse_payload(message)
                         self.UI.DisplayPlayerList(players)
+                    if MessageType == 'BoardDisplay':
+                        board_info = MESSAGES.BoardDisplay.parse_payload(message)
+                        self.UI.DisplayBoard(board_info)
+                        
+                    if MessageType == 'BuyStartingCityRequest':
+                        current_player  = MESSAGES.BuyStartingCityRequest.parse_payload(message)
+                        if current_player == username:
+                            self.UI.Get
+
+                    
                 else:
                     print('Server closed the connection.')
                     self.kill = True
