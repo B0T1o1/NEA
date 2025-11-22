@@ -5,6 +5,8 @@ import time
 
 from shared import MESSAGES
 from shared.encryption import RSA 
+from math import inf
+import math
 
 class ClientC():
     def __init__(self,host = '127.0.0.1',port=65432):
@@ -69,8 +71,15 @@ class ClientC():
                     if MessageType == 'BuyStartingCityRequest':
                         current_player  = MESSAGES.BuyStartingCityRequest.parse_payload(message)
                         if current_player == username:
-                            self.UI.Get
+                            city = self.UI.GetCity()
+                            citymessage = MESSAGES.BuyStartingCityResponse.construct_payload(city)
+                            self.client_socket.sendall(citymessage.encode())
+                        else:
+                            self.UI.DisplayMessage(f'{username} is currently buying their first city.')
 
+                    if MessageType == 'SendLongMessage':
+                        message_length = MESSAGES.SendLongMessage.parse_payload(message)
+                        data = self.client_socket.recv(message_length+10)
                     
                 else:
                     print('Server closed the connection.')

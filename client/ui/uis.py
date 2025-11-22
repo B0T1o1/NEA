@@ -1,3 +1,4 @@
+from math import inf
 import math
 class UIC():
     def __init__(self):
@@ -24,6 +25,8 @@ class UIC():
         return self.UI.DisplayMessage(message)
     def DisplayBoard(self,board):
         return self.UI.DisplayBoard(board)
+    def GetStartingCity(self):
+        return self.UI.GetStartingCity()
 class TUIC(UIC):
     def __init__(self):
         pass
@@ -56,25 +59,33 @@ class TUIC(UIC):
         for player in players:
             print(f'- {player}')
     
-    def DisplayBoard(self, board_info:dict):
+    def DisplayBoard(self, board_info: dict):
+
         """
         Takes the dictionary output from BoardC.DisplayBoardInfo
-        and prints a formatted report to the terminal.
+        and prints a formatted report to the terminal, using city_Indexes
+        to translate connection keys.
         """
         
         cities_data = board_info["cities"]
-        matrix = board_info["connections"]
+        # New: Get the mapping from index to city name
+        city_index_to_name = board_info["city_Indexes"]
         
-        # We need an ordered list of keys to match the matrix indices.
-        # In Python 3.7+, dictionary insertion order is preserved, so this works 
-        # assuming BoardC populated them in the same order as the matrix.
-        city_names_ordered = list(cities_data.keys())
-
+        # --- SECTION 0: BOARD HEADER & REGIONS ---
+        
         print("\n" + "="*80)
-        print(f"{'POWER GRID BOARD STATUS':^80}")
-        print("="*80 + "\n")
+        print(f"{'⚡ POWER GRID BOARD STATUS ⚡':^80}")
+        print("="*80)
+        
+        print("\n🌐 REGIONS AVAILABLE:")
+        regions_str = ", ".join(board_info.get("regions", []))
+        print(f"  {regions_str}")
+        
+        print("-" * 80 + "\n")
 
         # --- SECTION 1: CITY OVERVIEW ---
+        
+        print(f"{'CITY OVERVIEW':^80}")
         # Headers with fixed width formatting
         header = f"| {'CITY ID':<15} | {'REGION':<10} | {'COST':<6} | {'STATUS':<10} | {'OWNERS'}"
         print("-" * len(header))
@@ -90,34 +101,44 @@ class TUIC(UIC):
             is_avail = "OPEN" if data["Available"] else "FULL"
             
             # Print Row
+            # 'cost' is the cost to build the first house, including connection cost from starting city.
             print(f"| {city_id:<15} | {data['region']:<10} | {data['cost']:<6} | {is_avail:<10} | {owners_str}")
 
         print("-" * len(header))
         print("\n")
 
-        # --- SECTION 2: CONNECTIONS (The Network) ---
-        print(f"{'NETWORK CONNECTIONS':^80}")
+        # --- SECTION 2: NETWORK CONNECTIONS ---
+        
+        print(f"{'🗺️ NETWORK CONNECTIONS':^80}")
         print("-" * 80)
 
-        # We iterate through the matrix using the ordered city names
-        for i, source_city in enumerate(city_names_ordered):
+        # Iterate through the city data where connections are stored
+        for source_city, data in cities_data.items():
             connections = []
-            row = matrix[i]
             
-            for j, cost in enumerate(row):
-                # Ignore self-loops (0) and non-connections (infinity)
-                if cost != math.inf and i != j:
-                    target_city = city_names_ordered[j]
+            # data["connections"] now uses integer indexes as keys.
+            for index, cost in data["connections"].items():
+                
+                # Check for math.inf (representing no connection) and the self-loop (cost 0)
+                # Since the DisplayBoardInfo function used enumerate(self.adjancency_matrix[...])
+                # and the adjacency matrix typically has the city itself with cost 0, we filter that out.
+                if cost != math.inf and cost != 0: 
+                    # Translate the index back to the city name
+                    target_city = city_index_to_name.get(index, f"UNKNOWN INDEX {index}")
                     connections.append(f"{target_city} (${cost})")
             
             # Join connections with a nice arrow
             if connections:
-                conn_str = "  <-->  ".join(connections)
-                print(f"[{source_city.upper()}] connects to:  {conn_str}")
+                conn_str = "  <-->  ".join(connections)
+                print(f"[{source_city.upper()}] connects to:  {conn_str}")
             else:
-                print(f"[{source_city.upper()}] IS ISOLATED")
+                print(f"[{source_city.upper()}] HAS NO EXTERNAL CONNECTIONS")
         
         print("\n" + "="*80 + "\n")
+
+    def GetStartingCity(self):
+        city = input('Please enter the city id of the city you would like to buy')
+        return city
 
 class GUIC(UIC):
     pass

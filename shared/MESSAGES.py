@@ -75,9 +75,16 @@ class BuyStartingCityRequest(Message):
     
 class BuyStartingCityResponse(Message):
     @staticmethod
-    def construct_payload(self,city_id:str):
+    def construct_payload(city_id:str):
         return str({'MessageType':'BuyStartingCityResponse','city': city_id})
     def parse_payload(payload) -> str:
         return payload['city']
+    
+class SendLongMessage(Message):
+    @staticmethod 
+    def construct_payload(self,length):
+        return str({'MessageType':'SendLongMessage','MessageLength':length})
+    def parse_payload(payload) ->int:
+        return int(payload['MessageLength'])
 
     

@@ -56,19 +56,28 @@ class GameStateC:
                 raise IndexError(f"Player with name {player_name} not found.")
         return True
     
-    def Set_starting_cities(self,playername:str,city:str):
-        if city in self.__startingcites:
+    def Set_starting_city(self,playername:str,city:str):
+        if city in self.__startingcites or not self.__CheckIfCity(city):
             return False
         else:
-            self.__startingcites
+            self.__startingcites.append()
+            return True
+
+    def __CheckIfCity(self,cityId):
+        if cityId in self.__Board.city_ids:
+            return True
+        else:
+            return False
 
     ### Getters ###
     def Get_players(self) -> list[str]:
         return [player.GetName() for player in self.__Players]
     
-    def Get_board(self) -> dict:
-        return self.__Board.DisplayBoardInfo()
-    
+    def Get_board(self,playername) -> dict:
+        playerClass = self.__PName_to_PClass[playername]
+        return self.__Board.DisplayBoardInfo(playerClass.GetSourceCity(),playername)
+    def Get_board_before_game(self):
+        return self.__Board.DisplayBoardInfoBeforeGame()
     def Get_round(self) -> int:
         return self._Round
     

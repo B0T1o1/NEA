@@ -24,13 +24,14 @@ class Server:
         self.clients: List[socket.socket] = []
         self.queue: List[socket.socket] = []
         self.ready_clients: List[tuple[str, socket.socket]] = []
+        self.Logged_in_clients: List[str]  = []
         self.lobby_game_index = 0
-        self.games: List[List[socket.socket]] = [[]]
+        self.games: List[dict[str,socket.socket]] = []
         self.game_states: dict[int, GameStateC] = {} # stores the game state for each active game
         self.game_locks: dict[int, threading.Lock] = {}  # Stores a lock for each active game
         self.client_keys: dict[int, tuple[int,int]] = {} # Stores the private_key for each client socket
-        self.game_queues: dict[int,List[tuple[str, MESSAGES.Message]]]
-        self.MAX_CLIENTS = 6
+        self.game_queues: dict[int,List[tuple[str, MESSAGES.Message]]] = {}
+        self.MAX_CLIENTS = 3
         self.MIN_CLIENTS = 3
         self.kill = False
 
@@ -58,45 +59,56 @@ class Server:
             RSA_keypair = RSA.generate_keypair()
             private_key = RSA_keypair[1]
             message = MESSAGES.LoginRequest.construct_payload(public_key=RSA_keypair[0])
-            client_socket.sendall(message.encode())
+            self.send_message(client_socket,message.encode())
             print('Sent LoginRequest with public key to client.')
             self.client_keys[client_socket.fileno()] = private_key
             while not self.kill:
                 data = client_socket.recv(1024)
                 if data:
                     # Decode and decrypt incoming message
-                    message = ast.literal_eval(RSA.decrypt(int(data.decode()), private_key))
-                    MessageType = message['MessageType']
+                    message_rec = ast.literal_eval(RSA.decrypt(int(data.decode()), private_key))
+                    MessageType = message_rec['MessageType']
 
                     # Handle different message types
-                    if message['MessageType'] == 'LoginResponse':
+                    if MessageType == 'LoginResponse':
                         # Handle login request
-                        username,password = MESSAGES.LoginResponse.parse_payload(message)
-                        conn = sqlite3.connect(db_path)
-                        cur = conn.cursor()
-                        # Check credentials
-                        cur.execute("SELECT * FROM usersdata WHERE username=? AND password_hash=?", (username,hashlib.sha256(password.encode()).hexdigest()))
-                        if cur.fetchall():
-                            # Successful login
-                            print(f"User {username} logged in successfully.")
-                            client_socket.sendall(MESSAGES.LoginConfirmation.construct_payload(True).encode())
-                            self.ready_clients.append((username,client_socket))
-                            self.queue.remove(client_socket)
-                            login_successful = True
-                            conn.close()
-                            break
+                        username,password = MESSAGES.LoginResponse.parse_payload(message_rec)
+                        if username in self.Logged_in_clients: # Account is already logged in
+                            message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
+                            self.send_message(client_socket,message)
+                            message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                            self.send_message(client_socket,message)
                         else:
-                            # Failed login
-                            print(f"User {username} failed to log in.")
-                            client_socket.sendall(MESSAGES.LoginConfirmation.construct_payload(False).encode())
-                            client_socket.sendall(MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
-                        conn.close()
+                            conn = sqlite3.connect(db_path)
+                            cur = conn.cursor()
+                            # Check credentials
+                            cur.execute("SELECT * FROM usersdata WHERE username=? AND password_hash=?", (username,hashlib.sha256(password.encode()).hexdigest()))
+                            if cur.fetchall():
+                                # Successful login
+                                print(f"User {username} logged in successfully.")
+                                message = MESSAGES.LoginConfirmation.construct_payload(True).encode()
+                                self.send_message(client_socket,message.encode())
+                                self.ready_clients.append((username,client_socket))
+                                self.Logged_in_clients.append(username)
+                                self.queue.remove(client_socket)
+                                login_successful = True
+                                conn.close()
+                                break
+                            else:
+                                # Failed login
+                                print(f"User {username} failed to log in.")
+                                message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
+                                self.send_message(client_socket,message)
+                                message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                                self.send_message(client_socket,message)
+                            conn.close()
 
-                    elif message['MessageType'] == 'RegisterRequest':
+                    elif MessageType == 'RegisterRequest':
                         # Handle registration request
-                        username,password = MESSAGES.RegisterRequest.parse_payload(message)
+                        username,password = MESSAGES.RegisterRequest.parse_payload(message_rec)
                         if not username or not password:
-                            client_socket.sendall(MESSAGES.RegisterResponse.construct_payload(False).encode())
+                            message = MESSAGES.RegisterResponse.construct_payload(False).encode()
+                            self.send_message(client_socket,message)
                         else:
                             conn = sqlite3.connect(db_path)
                             cur = conn.cursor()
@@ -104,14 +116,16 @@ class Server:
                             if cur.fetchall():
                                 # Username already exists
                                 print(f"Registration failed: Username {username} already exists.")
-                                client_socket.sendall(MESSAGES.RegisterResponse.construct_payload(False).encode())
+                                message = MESSAGES.RegisterResponse.construct_payload(False).encode()
+                                self.send_message(client_socket,message)
                             else:
                                 # Register new user
                                 cur.execute("INSERT INTO usersdata (username, password_hash) VALUES (?, ?)", (username, hashlib.sha256(password.encode()).hexdigest()))
                                 conn.commit()
                                 print(f"User {username} registered successfully.")
-                                client_socket.sendall(MESSAGES.RegisterResponse.construct_payload(True).encode())
-                            client_socket.sendall(MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
+                                self.send_message(client_socket,message) = MESSAGES.RegisterResponse.construct_payload(True).encode()
+                            message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                            self.send_message(client_socket,message)
                             conn.close()
                             
 
@@ -133,36 +147,63 @@ class Server:
     def start_game(self, game_id):
             """Initializes the game and starts the Game Loop Thread."""
             players = self.games[game_id]
-            print(f"Initializing game {game_id} with players: {[p[0] for p in players]}")
+            print(f"Initializing game {game_id} with players: {[p for p in players.keys()]}")
             
             # Initialize State
             self.game_states[game_id] = GameStateC()
-            self.game_states[game_id].Set_number_of_players(len(players))
-            self.game_states[game_id].Set_player_names([p[0] for p in players])
+            self.game_states[game_id].Set_number_of_players(len(players.keys()))
             self.game_states[game_id].Set_settings()
+            self.game_states[game_id].Set_player_names([p for p in players.keys()])
+
             
             # Initialize Message Queue for this game
             self.game_queues[game_id] = queue.Queue()
+            self.game_locks[game_id] = threading.Lock()
 
             # Notify Players
             GameStartMessage = MESSAGES.GameStartNotification.construct_payload(game_id, self.game_states[game_id].Get_players())
-            BoardMessage = MESSAGES.BoardDisplay.construct_payload(self.game_states[game_id].Get_board())
-            
-            for (username, client_socket) in players:
+            self.Broadcast_to_game(game_id,GameStartMessage)
+            self.send_Starting_Board_to_everyone(game_id)
+
+            for username, client_socket in players.items():
                 try:
-                    client_socket.sendall(GameStartMessage.encode())
-                    client_socket.sendall(BoardMessage.encode())
-                    # Start a listener thread for this specific player
                     threading.Thread(target=self.Handle_Player, args=(game_id, client_socket, username), daemon=True).start()
                 except Exception as e:
                     print(f'Failed to start player {username}: {e}')
 
             # Start the Main Game Loop in a separate thread so it doesn't block the server
             threading.Thread(target=self.game_logic_loop, args=(game_id,), daemon=True).start()
-            
+
+    def send_message(self,client_socket:socket.socket,message:str):
+        if len(message) > 1024:
+            client_socket.sendall(MESSAGES.SendLongMessage(len(message)))
+            client_socket.sendall(message)
+        else:
+            client_socket.sendall(message)
+
+    def send_Board_to_everyone(self,game_id):
+        with self.game_locks[game_id]:
+            for player,socket in self.games[game_id].items():
+                board = self.game_states[game_id].Get_board(player)
+                BoardMessage = MESSAGES.BoardDisplay.construct_payload(board)
+                self.send_message(socket,BoardMessage.encode())
+    def send_Starting_Board_to_everyone(self,game_id):
+        with self.game_locks[game_id]:
+            for player,socket in self.games[game_id].items():
+                board = self.game_states[game_id].Get_board_before_game()
+                BoardMessage = MESSAGES.BoardDisplay.construct_payload(board)
+                self.send_message(socket,BoardMessage.encode())
+
     def game_logic_loop(self, game_id):
         """The Central Brain of the specific game instance."""
         print(f"Game Loop started for Game ID {game_id}")
+        players = self.game_states[game_id].Get_players()
+        next_player_index = 0
+        next_player = players[next_player_index]
+        
+        client_socket = self.games[game_id][next_player]
+        BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player)
+        self.Broadcast_to_game(game_id,BuyCityRequestMessage)
         
         while not self.kill:
             try:
@@ -170,40 +211,43 @@ class Server:
                 # This consumes messages put here by Handle_Player threads
                 try:
                     username, message = self.game_queues[game_id].get(timeout=1) 
+                        
+                    msg_type = message.get('MessageType')
+                    print(f"Game {game_id} received {msg_type} from {username}")
+
+                    # --- GAME LOGIC PROCESSING ---
+                    if msg_type == 'BuyStartCityResponse':
+                        if username == next_player:
+                            city = MESSAGES.BuyStartingCityResponse.parse_payload(message_rec)
+                            if self.game_states[game_id].Set_starting_city(username,city):
+                                next_player_index += 1
+                                if len(players) == next_player_index:
+                                    #Startpowerstation bidding
+                                    pass
+                                next_player = players[next_player_index]
+                                BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player)
+                                self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+                                
+                    # Add other game logic handling here...
                 except queue.Empty:
-                    continue
+                    time.sleep(0.05)
 
-                msg_type = message.get('MessageType')
-                print(f"Game {game_id} received {msg_type} from {username}")
-
-                # --- GAME LOGIC PROCESSING ---
-                if msg_type == 'BuyStartCity':
-                    # Example: Update game state
-                    # result = self.game_states[game_id].buy_city(username, ...)
-                    # self.broadcast_to_game(game_id, UpdateMessage)
-                    pass
-                
-                # Add other game logic handling here...
 
             except Exception as e:
                 print(f"Error in Game Loop {game_id}: {e}")
-                
-                
-                
     
-    def broadcast_to_game(self, game_id, message_payload: str):
-            """Procedure to send a message to all clients in a specific game."""
-            message = message_payload.encode()
-            for _, client_socket in self.games[game_id]:
-                try:
-                    client_socket.sendall(message)
-                except Exception as e:
-                    print(f"Failed to broadcast to a client: {e}")
+    def Broadcast_to_game(self,game_id,message):
+        for client_socket in self.games[game_id].values():
+            self.send_message(client_socket,message.encode())
+        return
+
+                
+                
+
 
     def Handle_Player(self, game_id, client_socket: socket.socket, username: str):
-        game_state = self.game_states[game_id]
-        game_lock = self.game_locks[game_id]
-        private_key = self.client_keys[client_socket] # Retrieve this client's key
+
+
 
         while not self.kill:
             try:
@@ -236,10 +280,11 @@ class Server:
     def check_and_start_games(self):
         while not self.kill:
             if len(self.ready_clients) >= self.MIN_CLIENTS:
-                self.games.append([])
+                self.games.append({})
                 self.lobby_game_index = len(self.games) - 1
-                while len(self.games[self.lobby_game_index]) < self.MAX_CLIENTS:
-                    self.games[self.lobby_game_index].append(self.ready_clients.pop(0))
+                while len(self.games[self.lobby_game_index].keys()) < self.MAX_CLIENTS:
+                    client = self.ready_clients.pop(0)
+                    self.games[self.lobby_game_index][client[0]] = client[1]
                 if len(self.games[self.lobby_game_index]) >= self.MIN_CLIENTS:
                     self.start_game(self.lobby_game_index)
                     self.lobby_game_index += 1
@@ -273,6 +318,9 @@ class Server:
                     client_socket.close()
                 self.server_socket.close()
                 print("Server shut down.")
+
+
+
 if __name__ == '__main__':
     server = Server()
     server.run()
