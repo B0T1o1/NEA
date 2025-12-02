@@ -87,7 +87,7 @@ class Server:
                                 # Successful login
                                 print(f"User {username} logged in successfully.")
                                 message = MESSAGES.LoginConfirmation.construct_payload(True).encode()
-                                self.send_message(client_socket,message.encode())
+                                self.send_message(client_socket,message)
                                 self.ready_clients.append((username,client_socket))
                                 self.Logged_in_clients.append(username)
                                 self.queue.remove(client_socket)
@@ -123,7 +123,7 @@ class Server:
                                 cur.execute("INSERT INTO usersdata (username, password_hash) VALUES (?, ?)", (username, hashlib.sha256(password.encode()).hexdigest()))
                                 conn.commit()
                                 print(f"User {username} registered successfully.")
-                                self.send_message(client_socket,message) = MESSAGES.RegisterResponse.construct_payload(True).encode()
+                                self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(True).encode())
                             message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
                             self.send_message(client_socket,message)
                             conn.close()
@@ -175,8 +175,12 @@ class Server:
             threading.Thread(target=self.game_logic_loop, args=(game_id,), daemon=True).start()
 
     def send_message(self,client_socket:socket.socket,message:str):
-        if len(message) > 1024:
-            client_socket.sendall(MESSAGES.SendLongMessage(len(message)))
+        length_of_message = len(message)
+        if length_of_message> 1024:
+            long_message_warning = MESSAGES.SendLongMessage.construct_payload(len(message)).encode()
+            
+            client_socket.sendall(MESSAGES.SendLongMessage.construct_payload(len(message)).encode())
+
             client_socket.sendall(message)
         else:
             client_socket.sendall(message)

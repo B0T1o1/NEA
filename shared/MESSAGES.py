@@ -82,7 +82,7 @@ class BuyStartingCityResponse(Message):
     
 class SendLongMessage(Message):
     @staticmethod 
-    def construct_payload(self,length):
+    def construct_payload(length):
         return str({'MessageType':'SendLongMessage','MessageLength':length})
     def parse_payload(payload) ->int:
         return int(payload['MessageLength'])

@@ -71,7 +71,7 @@ class ClientC():
                     if MessageType == 'BuyStartingCityRequest':
                         current_player  = MESSAGES.BuyStartingCityRequest.parse_payload(message)
                         if current_player == username:
-                            city = self.UI.GetCity()
+                            city = self.UI.GetStartingCity()
                             citymessage = MESSAGES.BuyStartingCityResponse.construct_payload(city)
                             self.client_socket.sendall(citymessage.encode())
                         else:
@@ -79,7 +79,7 @@ class ClientC():
 
                     if MessageType == 'SendLongMessage':
                         message_length = MESSAGES.SendLongMessage.parse_payload(message)
-                        data = self.client_socket.recv(message_length+10)
+                        data = self.client_socket.recv(message_length+20)
                     
                 else:
                     print('Server closed the connection.')

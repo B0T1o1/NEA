@@ -89,8 +89,16 @@ class PS_Market:
             self.__Market.pop()
 
             return True
+        else:
+            self.RemoveTopPowerStation()
         return False
 
+    def RemoveTopPowerStation(self):
+        if self.__stage <=  2:
+            self.__Deck.append(self.__Market.pop())
+            self.__Market.append(self.__Deck.pop(0))
+            self.__Market.sort()
+            
 
 
 class Stage3(PowerStationC):

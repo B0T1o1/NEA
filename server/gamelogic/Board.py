@@ -17,7 +17,6 @@ class BoardC:
 
         self.LoadMap()
 
-
     def LoadMap(self):
         self.city_ids = [city["id"] for city in self.__map_data["cities"] if city["region"] in self._regions]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
@@ -167,3 +166,5 @@ class City:
     
     
 
+if __name__ == '__main__':
+    BoardC('Data/board.JSON','G',["Brown","Yellow","Red","Purple"])

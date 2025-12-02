@@ -560,6 +560,8 @@ class Phase5:
         if not Used_Discount:
             # Removes the discounted powerstation from the market is not used
             self.__PowerStationMarket.RemoveDiscountedPowerStation()
+            
+        
         
     def Restock_Resources(self):
         ResourceAmountResupply = {
@@ -670,7 +672,5 @@ class Phase5:
                         #player with most money win
                 return Player_With_most_money
         return None
-
-
 
 
