@@ -51,6 +51,33 @@ class PS_Market:
         else:
             return self.__Market , []
         
+    def GetMarketString(self) -> str:
+        """
+        Returns a string with all market information (stage + market split + station details).
+        """
+        upper, lower = self.GiveMarket()
+
+
+
+        lines = []
+        lines.append(f"Stage: {self.__stage}")
+
+        if self.__stage != 3:
+            lines.append("Upper Market (cheaper 4):")
+            for s in upper:
+                lines.append("  - " + s.station_to_str())
+
+            lines.append("Lower Market (expensive 4):")
+            for s in lower:
+                lines.append("  - " + s.station_to_str())
+        else:
+            lines.append("Market (Stage 3):")
+            for s in upper:  # in stage 3, GiveMarket returns (market, [])
+                lines.append("  - " + s.station_to_str())
+
+        return "\n".join(lines)
+
+
     def BuyPowerStation(self,Station:PowerStationC):
 
         for index, station in enumerate(self.__Market):

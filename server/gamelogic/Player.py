@@ -10,38 +10,54 @@ class PlayerC:
 
     def Pay(self,Electros:int):
         self.__Electros += Electros
-    def GetPowerStations(self) -> list:
+    def GetPowerStations(self) -> list[PowerStationC]:
         self.__PowerStations.sort()
         return self.__PowerStations
     
     def GetResourceSpace(self) -> dict:
-        available =  { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
-        for PowerStation in self.__PowerStations:
-            available[PowerStation.GetFuelType()] += PowerStation.GetFuelAmount() * 2
-        for type in  ['C','O','G','N']:
-            available[type] -=  self.__Resources[type]
-        return available
+            available = { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
+            
+            # 1. Calculate total raw capacity based on stations
+            for PowerStation in self.__PowerStations:
+                available[PowerStation.GetFuelType()] += PowerStation.GetFuelAmount() * 2
+                
+            # 2. Subtract currently held resources
+            for type in ['C','O','G','N']:
+                available[type] -= self.__Resources[type]
+
+            # 3. Handle Hybrid Overflow (Crucial Step)
+            # If available['C'] is negative (e.g., -2), it means we have 2 extra Coal
+            # that must be stored in Hybrid space. We subtract that from 'H'.
+            if available['C'] < 0:
+                available['H'] += available['C'] # Reduces H capacity by the overflow
+                available['C'] = 0               # Resets C to 0 (no negative space)
+
+            if available['O'] < 0:
+                available['H'] += available['O'] # Reduces H capacity by the overflow
+                available['O'] = 0               # Resets O to 0
+
+            # 4. Final Safety Check
+            # Ensure H (or G/N if there was an error) never returns a negative number
+            for key in available:
+                if available[key] < 0:
+                    available[key] = 0
+                    
+            return available
     
-    def HasResourceSpace(self,Type,amount:int)-> bool:
-        spaces = self.GetResourceSpace()
-        space = 0
-        if Type == 'O' and self.__Resources['C'] <= spaces['C']:
-            space += spaces['H']
-
-        elif Type == 'O':
-            space += spaces['H'] - - spaces['C']
-
-        elif Type == 'C' and self.__Resources['O'] <= spaces['O']:
-            space += spaces['H']
-        elif Type == 'C':
-            space += spaces['H']  - spaces['O']
-        
-        space += spaces[Type]
-
-        if space >= amount:
-            return True
-        else:
-            return False
+    def HasResourceSpace(self, Type: str, amount: int) -> bool:
+            # Get the currently available empty slots 
+            # (This assumes GetResourceSpace correctly calculates remaining 'H' space)
+            spaces = self.GetResourceSpace()
+            
+            # Start with the specific space for the requested type
+            total_space = spaces.get(Type, 0)
+            
+            # If the requested type is Coal or Oil, they can also use the available Hybrid space
+            if Type in ['C', 'O']:
+                total_space += spaces.get('H', 0)
+                
+            # Check if the total available space is sufficient
+            return total_space >= amount
         
     def GetResources(self):
         return dict(self.__Resources)

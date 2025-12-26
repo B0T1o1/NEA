@@ -11,7 +11,7 @@ class GameStateC:
     def __init__(self):
         self.__stage = 1
         self._Round = 0
-        self.Phase = 1
+        self.__Phase = 1
         self.__startingcites = []
         #         self.__players_to_regions = {3:["Brown","Yellow","Red","Purple"],4:["Brown","Green","Yellow","Red","Purple"],5:["Light Blue","Brown","Green","Yellow","Red","Purple"],6:["Light Blue","Brown","Green","Yellow","Red","Purple"]}
 
@@ -56,11 +56,14 @@ class GameStateC:
                 raise IndexError(f"Player with name {player_name} not found.")
         return True
     
-    def Set_starting_city(self,playername:str,city:str):
-        if city in self.__startingcites or not self.__CheckIfCity(city):
+    def Set_starting_city(self,player_name:str,city:str):
+        player = self.__PName_to_PClass.get(player_name)
+        if city in self.__startingcites or not self.__CheckIfCity(city) or not player:
             return False
         else:
-            self.__startingcites.append()
+            self.__startingcites.append(city)
+            player.AddSourceCity(city)
+            self.__Board.cityIds_to_CityClass[city].PlayerBuyCity(player_name)
             return True
 
     def __CheckIfCity(self,cityId):
@@ -76,212 +79,291 @@ class GameStateC:
     def Get_board(self,playername) -> dict:
         playerClass = self.__PName_to_PClass[playername]
         return self.__Board.DisplayBoardInfo(playerClass.GetSourceCity(),playername)
+    
     def Get_board_before_game(self):
         return self.__Board.DisplayBoardInfoBeforeGame()
     def Get_round(self) -> int:
         return self._Round
     
     def Get_phase(self) -> int:
-        return self.Phase
+        return self.__Phase
     
     def Get_stage(self) -> int:
         return self.__stage
     
+    def Get_electros_of(self,player_name:str) -> int:
+        player = self.__PName_to_PClass.get(player_name)
+        return player.GetElectros()
+
 
 
     """Game Logic Methods Below"""
     def Start_Game(self):
-        self.__Do_Phase_1_order()
-        self.Phase = 2
-        return True
-
+        if self.__Phase ==1 and len(self.__startingcites) == self.__NofPlayers:
+            self.__Do_Phase_1_start()
+            self.__Phase = 2
+            return True
+        else:
+            return False
     ### Phase 1 Methods ###
     def __Do_Phase_1_start(self):
-        if self.Phase == 1:    
+        if self.__Phase == 1:    
             Phase1.Random_Assignment(self.__Players)
-            self.Phase = 2
+            self.__Phase = 2
             return True
         raise Exception("Not in Phase 1")
 
-    def __Do_Phase_1_order(self):
-        if self.Phase == 1:
+    def Do_Phase_1_order(self):
+        if self.__Phase == 1:
             self.__Players = Phase1.Determine_Player_Order(self.__Players)
-            self.Phase = 2
+            self.__Phase = 2
             return [player.GetName() for player in self.__Players]
         raise Exception("Not in Phase 1")
     
     ### Phase 2 Methods ###
-    def Get_Current_Market(self):
+
+    def Get_Current_Market_String(self):
+        return self.__PowerStationMarket.GetMarketString()
+    def Get_Valid_station_values(self):
         current_market, future_market = self.__PowerStationMarket.GiveMarket()
-        return current_market, future_market
-    
+        return [ps.GetValue() for ps in current_market]
     def Start_Auction(self):
-        if self.Phase == 2:
-            if self.__Round == 0:
-                self.Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players)
+        if self.__Phase == 2:
+            if self._Round == 0:
+                self.__Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players)
             else:
-                self.Phase2 = Phase2(self.__PowerStationMarket,self.__Players)
+                self.__Phase2 = Phase2(self.__PowerStationMarket,self.__Players)
             return True
         return False
     
-    def Starting_Bid_on_Power_Station(self, player_name: str, station: PowerStationC) -> bool:
-        if self.Phase == 2:
+    def Convert_PS_value_to_class(self, ps_value):
+        if int(ps_value) not in self.Get_Valid_station_values():
+            return False  # or raise an error
+
+        powerstations = self.__PowerStationMarket.GiveMarket()[0]
+
+        for ps in powerstations:
+            if ps.GetValue() == int(ps_value):
+                return ps  # this is the PowerStation object
+        return False  # if not found
+
+
+    def Starting_Bid_on_Power_Station(self, player_name: str, ps_value: str) -> bool:
+        if self.__Phase == 2:
             player = self.__PName_to_PClass.get(player_name)
-            if player:
-                return self.Phase2.Select_Station_For_Auction(player, station)
+            station = self.Convert_PS_value_to_class(ps_value)
+            if station and player:
+                return self.__Phase2.Select_Station_For_Auction(station, player)
             raise IndexError(f'Player with name {player_name} not found.')
         raise Exception("Not in Phase 2")
     
-    def Place_Bid(self, player_name: str, station: PowerStationC, bid: int) -> bool:
-        if self.Phase ==2:
+    def Place_Bid(self, player_name: str, bid: int) -> bool:
+        if self.__Phase ==2:
             player = self.__PName_to_PClass.get(player_name)
             if player:
-                return self.Phase2.Receive_Bid(player,station,bid)
+                return self.__Phase2.Receive_Bid(player,bid)
             raise IndexError(f'Player with name {player_name} not found.')
         raise Exception("Not in Phase 2")
     
-    def Resign_From_Bidding(self,player_name:str) -> tuple[str,int]:
-        if self.Phase == 2:
+    def Resign_From_Bidding(self,player_name:str) -> tuple[str|bool,int,str]:
+        if self.__Phase == 2:
             player = self.__PName_to_PClass.get(player_name)
             if player:
-                winner, winning_bid = self.Phase2.Receive_Resign(player)
+                winner, winning_bid,station = self.__Phase2.Receive_Resign(player)
                 if winner:
-                    return winner.GetName(), winning_bid
-                return None, 0
+                    return winner.GetName(), winning_bid ,  station.station_to_str()
+                return False, 0 , station.station_to_str()
             raise IndexError(f'Player with name {player_name} not found.')
         raise Exception("Not in Phase 2")
     
     def Get_Next_Bidder_in_Round(self) -> str:
-        if self.Phase == 2:
-            bidder = self.Phase2.Get_Next_Bidder_in_Round()
+        if self.__Phase == 2:
+            bidder = self.__Phase2.Get_Next_Bidder_in_Round()
             return bidder.GetName()
         raise Exception("Not in Phase 2")
+    
+    def Get_info_Bidding_Round(self):
+        if self.__Phase == 2:
+            min_bid, station, player =  self.__Phase2.Get_info_on_BRound()
+            return min_bid, station.station_to_str(),player.GetName()
+        else:
+            raise Exception("Not in Phase 2")
 
-    def Get_Next_Bidder(self) -> str:
-        if self.Phase == 2:
-            bidder = self.Phase2.Get_Next_Bidder()
-            return bidder.GetName()
+
+    def Get_Next_Bidder(self) -> str|bool:
+        if self.__Phase == 2:
+            bidder = self.__Phase2.Get_Next_Bidder()
+            if bidder:
+                return bidder.GetName()
+            return False
         raise Exception("Not in Phase 2")
     
     def Finish_Auction(self) -> bool:
-        if self.Phase2.Finish_Auction() and self.Phase == 2:
-            self.Phase = 3
-            return True
-        raise Exception("Auction not finished yet.")
-    
+        if self.__Phase == 2:
+            if self.__Phase2.Finish_Auction():
+                self.__Phase = 3
+                return True
+            else:
+                return False
+            
+        raise Exception("Not in Phase 2")    
 
     ### Phase 3 Methods ###
     def Do_Resource_Buying(self):
-        if self.Phase == 3:
-            self.Phase3 = Phase3(self.__ResourceMarket,self.__Players[::-1])
-        raise Exception("Not in Phase 3")
+        if self.__Phase == 3:
+            self.__Phase3 = Phase3(self.__ResourceMarket,self.__Players[::-1])
+        else:
+            raise Exception("Not in Phase 3")
         
     def Get_Resource_Buyers(self) -> list[str]:
-        if self.Phase != 3:
+        if self.__Phase != 3:
             raise Exception("Not in Phase 3")
-        return [player.GetName() for player in self.Phase3.Get_Players_to_buy()]
+        return [player.GetName() for player in self.__Phase3.Get_Players_to_buy()]
     
+    def Get_Next_Resource_Buyer(self) -> str:
+        if self.__Phase != 3:
+            raise Exception("Not in Phase 3")
+        buyers = self.__Phase3.Get_Players_to_buy()
+        if buyers:
+            return buyers[0].GetName()
+        return False
+    
+    def Get_Resource_Costs(self) -> dict[str, list[int]]:
+        if self.__Phase != 3:
+            raise Exception("Not in Phase 3")
+        return self.__Phase3.Get_Resource_Costs()
+
     def Buy_Resource(self,player_name:str,ResourceType:str,amount:int):
-        if self.Phase != 3:
+        if self.__Phase != 3:
             raise Exception("Not in Phase 3")
         player = self.__PName_to_PClass.get(player_name)
+        if amount == 0:
+            self.Player_Finished_Buying(player_name)
+        elif player:
+            self.__Phase3.Buy_Resources(player,ResourceType,amount)
+        else:
+            raise IndexError(f'Player with name {player_name} not found.')
+    
+    def Get_PowerStations_of(self,player_name:str) -> List[str]:
+        player = self.__PName_to_PClass.get(player_name)
         if player:
-            self.Phase3.Buy_Resources(player,ResourceType,amount)
+            return [ps.station_to_str() for ps in player.GetPowerStations()]
+        else:
+            raise IndexError(f'Player with name {player_name} not found.')
+        
+    def Get_Resource_Space_of(self,player_name:str) -> dict:
+        player = self.__PName_to_PClass.get(player_name)
+        if player:
+            return player.GetResourceSpace()
         else:
             raise IndexError(f'Player with name {player_name} not found.')
         
     def Player_Finished_Buying(self,player_name:str):
-        if self.Phase != 3:
+        if self.__Phase != 3:
             raise Exception("Not in Phase 3")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            self.Phase3.Player_Finished_Buying(player)
+            self.__Phase3.Player_Finished_Buying(player)
         else:
             raise IndexError(f'Player with name {player_name} not found.')
     
     def Finish_Resource_Buying(self):
-        if self.Phase != 3:
+        if self.__Phase != 3:
             raise Exception("Not in Phase 3")
-        if self.Phase3.Finish_Resource_Buying():
-            self.Phase = 4
+        if self.__Phase3.Finish_Resource_Buying():
+            self.__Phase = 4
             return True
         raise Exception("Not all Players have finished buying resources yet.")
 
     ### Phase 4 Methdos ###
     def Do_City_Buying(self):
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
-        self.Phase4 = Phase4([self.__Players][::-1],self.__Board)
+        self.__Phase4 = Phase4(self.__Players[::-1],self.__Board)
         
     def Get_Players_for_City_Buying(self) -> List[str]:
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
-        return [player.GetName() for player in self.Phase4.Get_Players()]
+        return [player.GetName() for player in self.__Phase4.Get_Players()]
+    
+    def Get_Next_City_Buyer(self) -> str:
+        if self.__Phase != 4:
+            raise Exception("Not in Phase 4")
+        buyers = self.__Phase4.Get_Players()
+        if buyers:
+            print((buyers,buyers[0],294))
+            return buyers[0].GetName()
+        return False
 
     def Get_City_Costs(self,player_name:str) -> dict[str,int]:
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            return self.Phase4.Get_Costs()
+            return self.__Phase4.Get_Costs()
         else:
             raise IndexError(f'Player with name {player_name} not found.')
         
     def Player_Finished_city_buying(self,player_name:str):
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            return self.Phase4.Player_Finished_Buying(player)
+            return self.__Phase4.Player_Finished_Buying(player)
         else:
             raise IndexError(f'Player with name {player_name} was not found')
         
     def Player_Buy_City(self,player_name:str,city_id:str):
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            return self.Phase4.Player_Buy_City(city_id)
+            if city_id == "FINISH":
+                    self.Player_Finished_city_buying(player_name)
+            else:
+                return self.__Phase4.Player_Buy_City(city_id)
         else:
             raise IndexError(f'Player with name {player_name} was not found')
 
     def Finish_City_Buying(self):
-        if self.Phase != 4:
+        if self.__Phase != 4:
             raise Exception("Not in Phase 4")
-        return self.Phase4.Finshed_city_buying()
+        
+        if self.__Phase4.Finshed_city_buying():
+            self.__Phase = 5
  
     ### Phase 5 Methods ###
     def Do_Bureaucracy(self):
-        if self.Phase != 5:
+        if self.__Phase != 5:
             raise Exception("Not in Phase 5")
-        self.Phase5 = Phase5(self.__Players,self.__ResourceMarket,self.__PowerStationMarket)
+        self.__Phase5 = Phase5(self.__Players,self.__ResourceMarket,self.__PowerStationMarket)
 
     def Get_Info_For_Bureaucracy(self):
-        if self.Phase != 5:
+        if self.__Phase != 5:
             raise Exception("Not in Phase 5")
 
-        player,electros, number_of_cities, Powerstations,resources = self.Phase5.GetInfoForBureaucracy()
+        player,electros, number_of_cities, Powerstations,resources = self.__Phase5.GetInfoForBureaucracy()
         return player.GetName() ,electros, number_of_cities, Powerstations,resources
     
     def Player_Do_Bureaucracy(self,player_name:str,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]]):
-        if self.Phase != 5:
+        if self.__Phase != 5:
             raise Exception("Not in Phase 5")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            return self.Phase5.Player_Do_Bureaucracy(player,Stations_Powered_resources_Dict)
+            return self.__Phase5.Player_Do_Bureaucracy(player,Stations_Powered_resources_Dict)
         else:
             raise IndexError(f'Player with name {player_name} was not found')
     
     def Check_Stage_Change_And_Win(self):
-        if self.Phase != 5:
+        if self.__Phase != 5:
             raise Exception("Not in Phase 5")
-        winner = self.Phase5.CheckStageChangeAndWin()
+        winner = self.__Phase5.CheckStageChangeAndWin()
         if winner:
             return winner.GetName()
         self._Round += 1
-        self.Phase = 1
+        self.__Phase = 1
         self.__Do_Phase_1_order()
-        self.Phase = 2
+        self.__Phase = 2
         return None
     
 
@@ -308,105 +390,126 @@ class Phase1:
 
 class Phase2:
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
-        self.__PS_Market = PS_Market
-        self.__Players = players
-        self.__Players_to_buy = list(players)
-        self.__Discount = True
-        self.__In_BRound = False
-        self.__BRound: BiddingRound
+        self._PS_Market = PS_Market
+        self._Players = players
+        self._Players_to_buy = list(players)
+        self._Discount = True
+        self._In_BRound = False
+        self._BRound: BiddingRound
+        
 
     def Get_Next_Bidder_in_Round(self) -> PlayerC:
-        if self.__In_BRound:
-            return self.__BRound.Get_Next_Bidder()
+        if self._In_BRound:
+            return self._BRound.Get_Next_Bidder()
         else:
             raise Exception("Not in bidding round.")
 
-    def Get_Next_Bidder(self) -> int:
-        if not self.__In_BRound:
-            return self.__Players_to_buy[0]
+    def Get_info_on_BRound(self):
+        if self._In_BRound:
+            current_bid,station,player = self._BRound.Get_Current_Bid() 
+            min_bid = current_bid + 1
+            return min_bid, station, player
+        else:
+            return False
+
+    def Get_Next_Bidder(self) -> PlayerC|bool:
+        if not self._In_BRound:
+            try:
+                return self._Players_to_buy[0]
+            except IndexError:
+                return False
         raise Exception("In bidding round.")
 
     def Select_Station_For_Auction(self,station:PowerStationC,player:PlayerC):
-        if player == self.__Players_to_buy[0] and station in self.__PS_Market.GiveMarket()[0] and not self.__In_BRound:
+        if player == self._Players_to_buy[0] and station in self._PS_Market.GiveMarket()[0] and not self._In_BRound:
             
-            if self.__PS_Market.GiveMarket()[0][0] == station and self.__Discount:
+            if self._PS_Market.GiveMarket()[0][0] == station and self._Discount:
                 bid = 1
-                self.__Discount = False
+                self._Discount = False
             else:
                 bid = station.GetValue()
-            self.__BRound = BiddingRound(self.__Current_Station,self.__Players_to_buy,player,bid)
-            self.__In_BRound = True
+            if self._Players_to_buy == [player]:
+                #Only player left to buy station, buys at min price
+                self._PS_Market.BuyPowerStation(station)
+                player.BuyPowerstation(station,bid)
+                self._Players_to_buy.remove(player)
+                return True
+            self._BRound = BiddingRound(station,self._Players_to_buy,player,bid)
+            self._In_BRound = True
             return True
+        
         return False
 
 
-    def Receive_Bid(self,player:PlayerC,station:PowerStationC,cost:int):
-        if self.__In_BRound:
-            return self.__BRound.Place_Bid(player,cost)
+
+    def Receive_Bid(self,player:PlayerC,cost:int):
+        if self._In_BRound:
+            return self._BRound.Place_Bid(player,cost)
         raise Exception("Not in bidding round.")
 
-    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int]:
-        if self.__In_BRound:
-            self.__BRound.Resign_from_bidding(player)
+    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int,PowerStationC]:
+        if self._In_BRound:
+            self._BRound.Resign_from_bidding(player)
 
-            if self.__BRound.Bidding_Over():
-                winner = self.__BRound.Get_Winner()
-                winning_bid = self.__BRound.Get_Winning_Bid()
-                self.__In_BRound = False
-                self.__Players_to_buy.remove(winner)
-
-
-                self.BuyPowerStation(winner,self.__BRound.GetStation(),winning_bid)
-                return winner, winning_bid
-            return None,0
+            if self._BRound.Bidding_Over():
+                winner = self._BRound.Get_Winner()
+                station = self._BRound.GetStation()
+                winning_bid = self._BRound.Get_Winning_Bid()
+                self._In_BRound = False
+                self._Players_to_buy.remove(winner)
+                self._PS_Market.BuyPowerStation(station)
+                winner.BuyPowerstation(station,winning_bid)
+                return winner, winning_bid, station
+            return None,0, station
         
-        if not self.__In_BRound and player == self.__Players_to_buy[0]:
-            self.__Players_to_buy.remove(player)
-            return None,0
+        if not self._In_BRound and player == self._Players_to_buy[0]:
+            self._Players_to_buy.remove(player)
+            return None,0, None
         raise Exception("Not in bidding round.")
     
 
     
     #Returns list of players still to buy not in bidding round
     def Get_Players_to_buy(self) -> List[PlayerC]:
-        return self.__Players_to_buy
+        return self._Players_to_buy
     
     def Used_Discount(self)-> bool:
         return not self.__Discount
 
-    def Finish_Auction(self):
-        if self.__Players_to_buy == []:
+    def Finish_Auction(self) -> bool:
+        if self._Players_to_buy == []:
             return True
         else:
-            raise Exception("Not all players have resigned their right to buy.")
+            return False
         
 class Phase2StartingRound(Phase2):
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
         super().__init__(PS_Market,players)
 
-    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int]:
-        if self.__In_BRound:
-            self.__BRound.Resign_from_bidding(player)
-            if self.__BRound.Bidding_Over():
-                winner = self.__BRound.Get_Winner()
-                winning_bid = self.__BRound.Get_Winning_Bid()
-                self.__In_BRound = False
-                self.__Players_to_buy.remove(winner)
-
-
-                self.BuyPowerStation(winner,self.__BRound.GetStation(),winning_bid)
-                return winner, winning_bid
-            return None,0
+    def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int,PowerStationC]:
+        if self._In_BRound:
+            self._BRound.Resign_from_bidding(player)
+            if self._BRound.Bidding_Over():
+                winner = self._BRound.Get_Winner()
+                station = self._BRound.GetStation()
+                winning_bid = self._BRound.Get_Winning_Bid()
+                self._In_BRound = False
+                self._Players_to_buy.remove(winner)
+                self._PS_Market.BuyPowerStation(station)
+                winner.BuyPowerstation(station,winning_bid)
+                return winner, winning_bid, station
+                return winner, winning_bid , self._BRound.GetStation()
+            return False,0, self._BRound.GetStation()
         
-        if not self.__In_BRound and player == self.__Players_to_buy[0]:
+        if not self._In_BRound and player == self._Players_to_buy[0]:
             raise Exception("In starting round,players must buy a power station.")
         raise Exception("Not in bidding round.")
     
     def Finish_Auction(self):
-        if self.__Players_to_buy:
+        if self._Players_to_buy:
             return False
         else:
-            Phase1.Determine_Player_Order(self.__Players)
+            Phase1.Determine_Player_Order(self._Players)
             return True
     
 class BiddingRound:
@@ -417,11 +520,11 @@ class BiddingRound:
         self.__players_left = list(Players)
         self.__current_bidder_index = self.__players.index(StartingPLayer)
         self.__current_bid = starting_bid
+        self.__next_bidder_index = (self.__current_bidder_index +1) % len(self.__players_left)
     
     def Get_Next_Bidder(self) -> PlayerC:
-        if self.__current_bidder_index +1 == len(self.__players_left):
-            return self.__players_left[0]
-        return self.__players_left[self.__current_bidder_index + 1]
+        return self.__players_left[self.__next_bidder_index]
+        
     
     def Get_Current_Bid(self) -> tuple[int,PowerStationC,PlayerC]:
         return (self.__current_bid, self.__station, self.__players_left[self.__current_bidder_index])
@@ -430,6 +533,7 @@ class BiddingRound:
         if player == self.Get_Next_Bidder() and bid > self.__current_bid and player.CheckEnoughElectros(bid):
             self.__current_bid = bid
             self.__current_bidder_index = self.__players_left.index(player)
+            self.__next_bidder_index = (self.__current_bidder_index +1) % len(self.__players_left)
             return True
         raise Exception("Invalid bid or not this player's turn to bid.")
     
@@ -438,6 +542,7 @@ class BiddingRound:
         if player == self.Get_Next_Bidder():
             self.__players_left.remove(player)
             self.__current_bidder_index = self.__players_left.index(current_bidder)
+            self.__next_bidder_index = (self.__current_bidder_index +1) % len(self.__players_left)
         else:
             raise Exception("It's not this player's turn to resign from bidding.")
     
@@ -514,7 +619,7 @@ class Phase4:
         costs = {}
         for city_id in self.__board.city_ids:
             cost = self.__board.DjkstrasSearch(player.GetSourceCity(), city_id,player.GetName())
-            if self.__board.cityIds_to_CityClass[city_id].CityIsAvailable(player.GetName()):
+            if self.__board.cityIds_to_CityClass[city_id].CityIsAvailableToPlayer(player.GetName()):
                 cost += self.__board.cityIds_to_CityClass[city_id].GetCostInCity()
                 costs[city_id] = cost
             else:
@@ -529,9 +634,11 @@ class Phase4:
             raise Exception("It's not this player's turn to finish buying.")
         
     def Player_Buy_City(self,city_id:str):
+        if city_id not in self.__board.city_ids:
+            return False
         player = self.__players_to_buy[0]
         cost = self.__board.DjkstrasSearch(player.GetSourceCity(),city_id,player.GetName())
-        if self.__board.cityIds_to_CityClass[city_id].CityIsAvailable(player.GetName()):
+        if self.__board.cityIds_to_CityClass[city_id].CityIsAvailableToPlayer(player.GetName()):
             cost += self.__board.cityIds_to_CityClass[city_id].GetCostInCity()
             if player.CheckEnoughElectros(cost):
                 self.__board.cityIds_to_CityClass[city_id].PlayerBuyCity(player.GetName())
@@ -580,7 +687,7 @@ class Phase5:
         player = self.__Players_left_to_do_bureaucracy[0]
         return (player, player.GetElectros(),len(player.GetCities() ),player.GetPowerStations(), player.GetResources())
 
-    def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC]):
+    def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]]):
         if player == self.__Players_left_to_do_bureaucracy[0]:
             stations = player.GetPowerStations()
             if set(Stations_Powered_resources_Dict.keys()).issubset(set(stations)):

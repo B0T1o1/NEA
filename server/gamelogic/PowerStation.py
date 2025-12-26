@@ -24,6 +24,15 @@ class PowerStationC:
     def GetNumberOfCitiesPowered(self):
         return self.__NumberOfCitiesPowered
 
+    def station_to_str(self) -> str:
+        # Works for both PowerStationC and Stage3
+        return (
+            f"Value={self.GetValue()}, "
+            f"FuelType={self.GetFuelType()} ({getattr(self, 'GetFuelWord', lambda: self.GetFuelType())()}), "
+            f"FuelAmount={self.GetFuelAmount()}, "
+            f"CitiesPowered={self.GetNumberOfCitiesPowered()}"
+        )
+    
     def GetFuelOptions(self) -> list[str]:
         """
         Returns a list of valid fuel types this station can use.
@@ -37,6 +46,7 @@ class PowerStationC:
             return []
         else:
             return [self.__FuelType]
+        
     def __lt__(self,other):
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')

@@ -13,8 +13,10 @@ from .gamelogic.GameState import GameStateC
 from typing import List
 import queue  
 import ast
+import struct
 
 class Server:
+    RECIEVE_LENGTH = 8
     def __init__(self, host: str = '127.0.0.1', port: int = 65432):
         self.host = host
         self.port = port
@@ -24,6 +26,7 @@ class Server:
         self.clients: List[socket.socket] = []
         self.queue: List[socket.socket] = []
         self.ready_clients: List[tuple[str, socket.socket]] = []
+        self.Client_sending_status: dict[int,bool] = {}
         self.Logged_in_clients: List[str]  = []
         self.lobby_game_index = 0
         self.games: List[dict[str,socket.socket]] = []
@@ -37,7 +40,7 @@ class Server:
 
     def connection_listen_loop(self):
         # Listen for incoming connections and calls Set_up_client for each new connection
-        Start_of_timer = None
+        Start_of_timer = datetime.datetime.now()
         while len(self.clients) < self.MAX_CLIENTS and ((datetime.datetime.now() - Start_of_timer).total_seconds() < 60 if Start_of_timer else True): # Checks for max clients or timer expiry
             try: 
                 print('Server listening for connections on {}:{}'.format(self.host,self.port))
@@ -45,105 +48,162 @@ class Server:
                 self.server_socket.listen()
                 connn, addd = self.server_socket.accept()
                 self.clients.append(connn)
+                self.Client_sending_status[connn.fileno()] = False
                 self.queue.append(connn)
                 threading.Thread(target=self.Set_up_client,args=(connn,)).start()
             except socket.timeout:
                 pass
             
     
-    def Set_up_client(self,client_socket:socket.socket):
-        db_path = os.path.join(os.path.dirname(__file__), 'data', 'usersdata.db')
-        try:
+    def Set_up_client(self, client_socket: socket.socket):
+            
+            db_path = os.path.join(os.path.dirname(__file__), 'data', 'usersdata.db')
+            
+            # 1. Initialize variables to prevent UnboundLocalError in 'finally' block
+            username = None
             login_successful = False
-            # Generate RSA keypair for this session and sends to client
-            RSA_keypair = RSA.generate_keypair()
-            private_key = RSA_keypair[1]
-            message = MESSAGES.LoginRequest.construct_payload(public_key=RSA_keypair[0])
-            self.send_message(client_socket,message.encode())
-            print('Sent LoginRequest with public key to client.')
-            self.client_keys[client_socket.fileno()] = private_key
-            while not self.kill:
-                data = client_socket.recv(1024)
-                if data:
-                    # Decode and decrypt incoming message
-                    message_rec = ast.literal_eval(RSA.decrypt(int(data.decode()), private_key))
-                    MessageType = message_rec['MessageType']
+            
+            # Define a limit (e.g., 2MB). No login/register packet should exceed this.
+            MAX_MESSAGE_SIZE = 2 * 1024 * 1024 
 
-                    # Handle different message types
-                    if MessageType == 'LoginResponse':
-                        # Handle login request
-                        username,password = MESSAGES.LoginResponse.parse_payload(message_rec)
-                        if username in self.Logged_in_clients: # Account is already logged in
-                            message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
-                            self.send_message(client_socket,message)
-                            message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
-                            self.send_message(client_socket,message)
-                        else:
-                            conn = sqlite3.connect(db_path)
-                            cur = conn.cursor()
-                            # Check credentials
-                            cur.execute("SELECT * FROM usersdata WHERE username=? AND password_hash=?", (username,hashlib.sha256(password.encode()).hexdigest()))
-                            if cur.fetchall():
-                                # Successful login
-                                print(f"User {username} logged in successfully.")
-                                message = MESSAGES.LoginConfirmation.construct_payload(True).encode()
-                                self.send_message(client_socket,message)
-                                self.ready_clients.append((username,client_socket))
-                                self.Logged_in_clients.append(username)
-                                self.queue.remove(client_socket)
-                                login_successful = True
-                                conn.close()
-                                break
-                            else:
-                                # Failed login
-                                print(f"User {username} failed to log in.")
-                                message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
-                                self.send_message(client_socket,message)
-                                message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
-                                self.send_message(client_socket,message)
-                            conn.close()
+            try:
+                # Generate RSA keypair for this session and sends to client
+                RSA_keypair = RSA.generate_keypair()
+                private_key = RSA_keypair[1]
+                message = MESSAGES.LoginRequest.construct_payload(public_key=RSA_keypair[0])
+                self.send_message(client_socket, message.encode())
+                print('Sent LoginRequest with public key to client.')
+                
+                self.client_keys[client_socket.fileno()] = private_key
+                
+                while not self.kill:
+                    length_bytes = client_socket.recv(self.RECIEVE_LENGTH)
+                    
+                    # Check for disconnection
+                    if not length_bytes:
+                        break 
+                    
+                    # Check for partial headers (garbage data)
+                    if len(length_bytes) < 8:
+                        break 
 
-                    elif MessageType == 'RegisterRequest':
-                        # Handle registration request
-                        username,password = MESSAGES.RegisterRequest.parse_payload(message_rec)
-                        if not username or not password:
-                            message = MESSAGES.RegisterResponse.construct_payload(False).encode()
-                            self.send_message(client_socket,message)
-                        else:
-                            conn = sqlite3.connect(db_path)
-                            cur = conn.cursor()
-                            cur.execute("SELECT * FROM usersdata WHERE username=?", (username,))
-                            if cur.fetchall():
-                                # Username already exists
-                                print(f"Registration failed: Username {username} already exists.")
-                                message = MESSAGES.RegisterResponse.construct_payload(False).encode()
-                                self.send_message(client_socket,message)
-                            else:
-                                # Register new user
-                                cur.execute("INSERT INTO usersdata (username, password_hash) VALUES (?, ?)", (username, hashlib.sha256(password.encode()).hexdigest()))
-                                conn.commit()
-                                print(f"User {username} registered successfully.")
-                                self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(True).encode())
-                            message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
-                            self.send_message(client_socket,message)
-                            conn.close()
+                    # Unpack the message length
+                    msg_length = struct.unpack('Q', length_bytes)[0]
+
+                    # ### SAFETY CHECK: Prevent MemoryError ###
+                    if msg_length > MAX_MESSAGE_SIZE:
+                        print(f"SECURITY ALERT: Client sent packet of size {msg_length}. Connection refused.")
+                        break
+                    # #########################################
+
+                    # Receive the actual data
+                    data = client_socket.recv(msg_length)
+                    
+                    if data:
+                        # Decode and decrypt incoming message
+                        # We use a try/except here in case decryption fails (wrong key/garbage data)
+                        try:
+                            decrypted_data = RSA.decrypt(int(data.decode()), private_key)
+                            message_rec = ast.literal_eval(decrypted_data)
+                        except Exception as e:
+                            print(f"Decryption failed: {e}")
+                            break
+
+                        MessageType = MESSAGES.Message.parse_payload(message_rec)
+
+                        # Handle different message types
+                        if MessageType == 'LoginResponse':
+                            # Handle login request
+                            username, password = MESSAGES.LoginResponse.parse_payload(message_rec)
+                            print(f"Login attempt: {username}")
                             
+                            if username in self.Logged_in_clients: # Account is already logged in
+                                message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
+                                self.send_message(client_socket, message)
+                                message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                                self.send_message(client_socket, message)
+                            else:
+                                conn = sqlite3.connect(db_path)
+                                cur = conn.cursor()
+                                # Check credentials
+                                cur.execute("SELECT * FROM usersdata WHERE username=? AND password_hash=?", (username, hashlib.sha256(password.encode()).hexdigest()))
+                                
+                                if cur.fetchall():
+                                    # Successful login
+                                    print(f"User {username} logged in successfully.")
+                                    message = MESSAGES.LoginConfirmation.construct_payload(True).encode()
+                                    self.send_message(client_socket, message)
+                                    self.ready_clients.append((username, client_socket))
+                                    self.Logged_in_clients.append(username)
+                                    self.queue.remove(client_socket)
+                                    login_successful = True
+                                    conn.close()
+                                    break
+                                else:
+                                    # Failed login
+                                    print(f"User {username} failed to log in.")
+                                    message = MESSAGES.LoginConfirmation.construct_payload(False).encode()
+                                    self.send_message(client_socket, message)
+                                    message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                                    self.send_message(client_socket, message)
+                                conn.close()
 
-                if not data:
-                    break # Client disconnected
+                        elif MessageType == 'RegisterRequest':
+                            # Handle registration request
+                            username_reg, password_reg = MESSAGES.RegisterRequest.parse_payload(message_rec)
+                            
+                            # We don't set 'username' yet, because they aren't logged in.
+                            # We just check the database.
+                            if not username_reg or not password_reg:
+                                message = MESSAGES.RegisterResponse.construct_payload(False).encode()
+                                self.send_message(client_socket, message)
+                            else:
+                                conn = sqlite3.connect(db_path)
+                                cur = conn.cursor()
+                                cur.execute("SELECT * FROM usersdata WHERE username=?", (username_reg,))
+                                if cur.fetchall():
+                                    # Username already exists
+                                    print(f"Registration failed: Username {username_reg} already exists.")
+                                    message = MESSAGES.RegisterResponse.construct_payload(False).encode()
+                                    self.send_message(client_socket, message)
+                                    message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                                    self.send_message(client_socket, message)
+                                else:
+                                    # Register new user
+                                    cur.execute("INSERT INTO usersdata (username, password_hash) VALUES (?, ?)", (username_reg, hashlib.sha256(password_reg.encode()).hexdigest()))
+                                    conn.commit()
+                                    print(f"User {username_reg} registered successfully.")
+                                    self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(True).encode())
+                                
+                                message = MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode()
+                                self.send_message(client_socket, message)
+                                conn.close()
 
-        except ConnectionResetError:
-            print('Client disconnected abruptly.')
-        finally:
-            if login_successful:
-                print(f"User {username} setup completed and added to ready clients.")
-                return
-            print(f"User {username} connection failed to set up.")
+                    if not data:
+                        break # Client disconnected
 
-            if client_socket in self.clients:
-                self.clients.remove(client_socket)
-            client_socket.close()
+            except ConnectionResetError:
+                print('Client disconnected abruptly.')
+            except Exception as e:
+                print(f"Unexpected error in Setup_client: {e}")
+                
+            finally:
+                if login_successful:
+                    print(f"User {username} setup completed and added to ready clients.")
+                    return
+                
+                # Safe print using the variable initialized at the top
+                user_display = username if username else "Unknown Client"
+                print(f"User {user_display} connection failed to set up.")
 
+                if client_socket in self.clients:
+                    self.clients.remove(client_socket)
+                
+                try:
+                    client_socket.close()
+                except:
+                    pass
+    
     def start_game(self, game_id):
             """Initializes the game and starts the Game Loop Thread."""
             players = self.games[game_id]
@@ -176,14 +236,17 @@ class Server:
 
     def send_message(self,client_socket:socket.socket,message:str):
         length_of_message = len(message)
-        if length_of_message> 1024:
-            long_message_warning = MESSAGES.SendLongMessage.construct_payload(len(message)).encode()
-            
-            client_socket.sendall(MESSAGES.SendLongMessage.construct_payload(len(message)).encode())
+        sent = False
+        while not sent:
+            if self.Client_sending_status[client_socket.fileno()] == False:
+                self.Client_sending_status[client_socket.fileno()] = True
+                client_socket.sendall(struct.pack('Q',length_of_message))
+                client_socket.sendall(message)
+                self.Client_sending_status[client_socket.fileno()] = False 
+                sent = True    
+            else:
+                time.sleep(0.01)
 
-            client_socket.sendall(message)
-        else:
-            client_socket.sendall(message)
 
     def send_Board_to_everyone(self,game_id):
         with self.game_locks[game_id]:
@@ -191,6 +254,7 @@ class Server:
                 board = self.game_states[game_id].Get_board(player)
                 BoardMessage = MESSAGES.BoardDisplay.construct_payload(board)
                 self.send_message(socket,BoardMessage.encode())
+    
     def send_Starting_Board_to_everyone(self,game_id):
         with self.game_locks[game_id]:
             for player,socket in self.games[game_id].items():
@@ -204,41 +268,189 @@ class Server:
         players = self.game_states[game_id].Get_players()
         next_player_index = 0
         next_player = players[next_player_index]
-        
+        game_state = self.game_states[game_id]
         client_socket = self.games[game_id][next_player]
-        BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player)
+        BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player))
         self.Broadcast_to_game(game_id,BuyCityRequestMessage)
         
         while not self.kill:
+        #add try
+            # Get message from queue (blocking with timeout to allow checking self.kill)
+            # This consumes messages put here by Handle_Player threads
             try:
-                # Get message from queue (blocking with timeout to allow checking self.kill)
-                # This consumes messages put here by Handle_Player threads
-                try:
-                    username, message = self.game_queues[game_id].get(timeout=1) 
-                        
-                    msg_type = message.get('MessageType')
-                    print(f"Game {game_id} received {msg_type} from {username}")
-
-                    # --- GAME LOGIC PROCESSING ---
-                    if msg_type == 'BuyStartCityResponse':
+                username, message = self.game_queues[game_id].get(timeout=1) 
+                    
+                msg_type = message.get('MessageType')
+                print(f"Game {game_id} received {msg_type} from {username}")
+                # --- GAME LOGIC PROCESSING ---
+                if msg_type == 'BuyStartingCityResponse':
+                    if game_state.Get_phase() == 1 and game_state.Get_round() == 0:
+                            
                         if username == next_player:
-                            city = MESSAGES.BuyStartingCityResponse.parse_payload(message_rec)
-                            if self.game_states[game_id].Set_starting_city(username,city):
+                            city = MESSAGES.BuyStartingCityResponse.parse_payload(message)
+                            if game_state.Set_starting_city(username,city):
                                 next_player_index += 1
                                 if len(players) == next_player_index:
                                     #Startpowerstation bidding
                                     pass
-                                next_player = players[next_player_index]
-                                BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player)
-                                self.Broadcast_to_game(game_id,BuyCityRequestMessage)
                                 
-                    # Add other game logic handling here...
-                except queue.Empty:
-                    time.sleep(0.05)
+                                self.send_Starting_Board_to_everyone(game_id)
+
+                                if not game_state.Start_Game():
+                                    
+                                    next_player = players[next_player_index]
+                                    BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player))
+                                    self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+                                else:
+                                    if game_state.Start_Auction():
+                                        market  = game_state.Get_Current_Market_String()
+                                        valid_values = game_state.Get_Valid_station_values()
+                                        next_player  = game_state.Get_Next_Bidder()
+                                        BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                        self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+
+                            else:
+                                BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+
+                if msg_type == 'BuyStartingStationResponse':
+                    if username == game_state.Get_Next_Bidder():
+                        power_station_value = MESSAGES.BuyStartingStationResponse.parse_payload(message)
+                        
+                        if game_state.Starting_Bid_on_Power_Station(username,power_station_value):
+                            if game_state.Finish_Auction():
+                                    game_state.Do_Resource_Buying()
+                                    self.send_Board_to_everyone(game_id)
+                                    costs = game_state.Get_Resource_Costs()
+                                    next_player = game_state.Get_Next_Resource_Buyer()
+                                    stations = game_state.Get_PowerStations_of(next_player)
+                                    resource_space = game_state.Get_Resource_Space_of(next_player)
+                                    BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                    self.Broadcast_to_game(game_id,BuyResourcesMessage)
+                            else:
+                                next_player = game_state.Get_Next_Bidder_in_Round()
+                                min_bid, station_info, held_by_player = game_state.Get_info_Bidding_Round()
+                                BidOnPowerStationMessage = MESSAGES.BidOnPowerStation.construct_payload(station_info,min_bid,next_player,held_by_player,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BidOnPowerStationMessage)
 
 
-            except Exception as e:
-                print(f"Error in Game Loop {game_id}: {e}")
+                        else:
+                            print("Invalid starting station bid")
+                            market  = game_state.Get_Current_Market_String()
+                            valid_values = game_state.Get_Valid_station_values()
+                            next_player  = game_state.Get_Next_Bidder()
+                            BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                            self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+                    else:
+                        pass
+                if msg_type == 'BidOnPowerStationResponse':
+                    if username == game_state.Get_Next_Bidder_in_Round():
+                        bid_amount = MESSAGES.BidOnPowerStationResponse.parse_payload(message)
+                        if bid_amount is False:
+                            winning_player, winning_bid, station_info = game_state.Resign_From_Bidding(username)
+                            if winning_player:
+                                message = MESSAGES.PlayerBoughtPowerStation.construct_payload(winning_player,station_info,winning_bid)
+                                self.Broadcast_to_game(game_id,message)
+                                # Proceed to next power station or next phase
+                                next_player = game_state.Get_Next_Bidder()
+                                if next_player:
+                                    market  = game_state.Get_Current_Market_String()
+                                    valid_values = game_state.Get_Valid_station_values()
+                                    BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                    self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+                                else:
+                                    #should not happen here but just in case
+                                    game_state.Finish_Auction()
+                                    game_state.Do_Resource_Buying()
+                                    self.send_Board_to_everyone(game_id)
+                                    costs = game_state.Get_Resource_Costs()
+                                    next_player = game_state.Get_Next_Resource_Buyer()
+                                    stations = game_state.Get_PowerStations_of(next_player)
+                                    resource_space = game_state.Get_Resource_Space_of(next_player)
+                                    BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                    self.Broadcast_to_game(game_id,BuyResourcesMessage)
+                            else:
+                                # Proceed to next bidder
+                                next_player = game_state.Get_Next_Bidder_in_Round()
+                                min_bid, station_info, held_by_player = game_state.Get_info_Bidding_Round()
+                                BidOnPowerStationMessage = MESSAGES.BidOnPowerStation.construct_payload(station_info,min_bid,next_player,held_by_player,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BidOnPowerStationMessage)
+                        else:
+                            game_state.Place_Bid(username,bid_amount) 
+                            next_player = game_state.Get_Next_Bidder_in_Round()
+                            if next_player:
+                                min_bid, station_info, held_by_player = game_state.Get_info_Bidding_Round()
+                                BidOnPowerStationMessage = MESSAGES.BidOnPowerStation.construct_payload(station_info,min_bid,next_player,held_by_player,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BidOnPowerStationMessage)
+
+                if msg_type == 'BuyResourcesResponse':
+                    if username == game_state.Get_Next_Resource_Buyer():
+                        resources_to_buy = MESSAGES.BuyResourcesResponse.parse_payload(message)
+                        resource = list(resources_to_buy.keys())
+                        amount = list(resources_to_buy.values())
+                        if len(resource) == len(amount) == 1:
+                            resource = resource[0]
+                            amount = amount[0]
+                            game_state.Buy_Resource(username,resource,amount)
+                            next_player = game_state.Get_Next_Resource_Buyer()
+                            if next_player:
+                                costs = game_state.Get_Resource_Costs()
+                                stations = game_state.Get_PowerStations_of(next_player)
+                                resource_space = game_state.Get_Resource_Space_of(next_player)
+                                BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                self.Broadcast_to_game(game_id,BuyResourcesMessage)
+                            else:
+                                game_state.Finish_Resource_Buying()
+                                # Proceed to next phase/turn
+                                self.send_Board_to_everyone(game_id)
+                                game_state.Do_City_Buying()
+                                next_player = game_state.Get_Next_City_Buyer()
+                                costs = game_state.Get_City_Costs(next_player)
+                                BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player),costs)
+                                self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+                        else:
+                            # Invalid response, ask again
+                            costs = game_state.Get_Resource_Costs()
+                            stations = game_state.Get_PowerStations_of(username)
+                            resource_space = game_state.Get_Resource_Space_of(username)
+                            BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(username,costs,stations,resource_space)
+                            self.Broadcast_to_game(game_id,BuyResourcesMessage)
+
+                if msg_type == 'BuyCityResponse':
+                    self.send_Board_to_everyone(game_id)
+                    if username == game_state.Get_Next_City_Buyer():
+                        city_id = MESSAGES.BuyCityResponse.parse_payload(message)
+                        if game_state.Player_Buy_City(username,city_id):
+                            next_player = game_state.Get_Next_City_Buyer()
+                            if next_player:
+                                costs = game_state.Get_City_Costs(next_player)
+                                BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player),costs)
+                                self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+                            elif game_state.Finish_City_Buying():
+                                game_state.Do_Bureaucracy()
+                                self.send_Board_to_everyone(game_id)
+                                next_player, electros , number_of_cities, power_stations, resources = game_state.Get_Info_For_Bureaucracy()
+
+
+                        else:
+                            BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(username,game_state.Get_electros_of(next_player),game_state.Get_City_Costs(next_player))
+                            self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+                            costs = game_state.Get_City_Costs(next_player)
+
+
+
+
+                        
+
+                            
+
+
+                # Add other game logic handling here...
+            except queue.Empty:
+                time.sleep(0.05)
+
+
+            #add exception handling
     
     def Broadcast_to_game(self,game_id,message):
         for client_socket in self.games[game_id].values():
@@ -246,40 +458,49 @@ class Server:
         return
 
                 
-                
-
-
     def Handle_Player(self, game_id, client_socket: socket.socket, username: str):
-
-
+        MAX_MESSAGE_SIZE = 10 * 1024 * 1024 # 10 MB Limit
 
         while not self.kill:
             try:
-                data = client_socket.recv(1024)
-                if not data:
+                length_bytes = client_socket.recv(self.RECIEVE_LENGTH)
+                
+                if not length_bytes:
                     print(f"Player {username} disconnected.")
-                    # TODO: Add logic to handle player disconnection
-                    # (e.g., remove from game, notify others)
                     break
                 
-                # 1. Decode the message
+                # 1. Validation Checks
+                if len(length_bytes) < 8:
+                    break
+                
+                msg_length = struct.unpack('Q', length_bytes)[0]
+
+                if msg_length > MAX_MESSAGE_SIZE:
+                    print(f"Security: {username} sent too much data.")
+                    break
+
+                # 2. Receive Data
+                data = client_socket.recv(msg_length)
+                
+                if not data:
+                    break
+                
+                # 3. Decode
+                # Note: ast.literal_eval is safer than eval, but still expects a string representation of a python object
                 message = ast.literal_eval(data.decode())
                 
                 self.game_queues[game_id].put((username, message))
-             
+                
             except ConnectionResetError:
                 print(f"Player {username} disconnected abruptly.")
-                break # Exit loop
+                break 
             except Exception as e:
                 print(f"Error in Handle_Player for {username}: {e}")
-                # You might want to break or send an error to the client
+                break
         
         # --- CLEANUP ---
         print(f"Handle_Player thread for {username} stopping.")
-        if client_socket in self.client_keys:
-            del self.client_keys[client_socket]
-        # Add logic to remove player from self.games[game_id]
-
+        # Add code here to notify the GameLoop that a player has left!
 
     def check_and_start_games(self):
         while not self.kill:
