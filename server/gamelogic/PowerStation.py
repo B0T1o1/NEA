@@ -51,3 +51,20 @@ class PowerStationC:
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
         return self.__Value < other.__Value 
+
+    def CheckSuffficentFuel(self, fuel_dict:dict[str,int]) -> bool:
+        """
+        Checks if the provided fuel dictionary has sufficient fuel for this power station.
+        Args:
+            fuel_dict (dict[str, int]): A dictionary mapping fuel types ('C', 'O', 'G', 'N') to their available amounts.
+        Returns:
+            bool: True if there is sufficient fuel, False otherwise.
+        """
+        required_amount = self.GetFuelAmount()
+        fuel_options = self.GetFuelOptions()
+        
+        if not fuel_options:  # Renewable station
+            return True
+        
+        total_available = sum(fuel_dict.get(fuel_type, 0) for fuel_type in fuel_options)
+        return total_available >= required_amount

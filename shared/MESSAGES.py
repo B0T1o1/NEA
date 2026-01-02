@@ -168,4 +168,47 @@ class BureaucracyComplete(Message):
         return str({'MessageType':'BureaucracyComplete','power_station_dict':str(power_station_dict)})
     @staticmethod
     def parse_payload(payload):
-        return ast.literal_eval(payload['power_station_dict'])
+        return payload['power_station_dict']
+class GameEndNotification(Message):
+    @staticmethod
+    def construct_payload(winner_name:str):
+        return str({'MessageType':'GameEndNotification','winner_name':winner_name})
+    @staticmethod
+    def parse_payload(payload) -> str:
+        return payload['winner_name']
+class BuyPowerStationRequest(Message):
+    @staticmethod
+    def construct_payload(market:str,current_player:str,electros:int,valid_values:List[int]):
+        return str({'MessageType':'BuyPowerStationRequest','market':market,'current_player':current_player,'electros':electros,'valid_values':valid_values})
+    @staticmethod
+    def parse_payload(payload) -> tuple[str,str,int,List[int]]:
+        return payload['market'], payload['current_player'], payload['electros'], payload['valid_values']
+class BuyPowerStationResponse(Message):
+    @staticmethod
+    def construct_payload(power_station_value:int|bool):
+        return str({'MessageType':'BuyPowerStationResponse','power_station_value':power_station_value})
+    @staticmethod
+    def parse_payload(payload) -> int|bool:
+        return payload['power_station_value']
+
+class BureaucracyNotification(Message):
+    @staticmethod
+    def construct_payload(player,number_cities_powered:int):
+        return str({'MessageType':'BureaucracyNotification','player':player,'number_cities_powered':str(number_cities_powered)})
+    @staticmethod
+    def parse_payload(payload) -> tuple[str,int]:
+        return payload['player'], int(payload['number_cities_powered'])
+class DiscardPowerStationRequest(Message):
+    @staticmethod
+    def construct_payload(current_player:str,power_stations:List[str]):
+        return str({'MessageType':'DiscardPowerStationRequest','current_player':current_player,'power_stations':power_stations})
+    @staticmethod
+    def parse_payload(payload) -> tuple[str,List[str]]:
+        return payload['current_player'], payload['power_stations']
+class DiscardPowerStationResponse(Message):
+    @staticmethod
+    def construct_payload(power_station_value:str):
+        return str({'MessageType':'DiscardPowerStationResponse','power_station_value':power_station_value})
+    @staticmethod
+    def parse_payload(payload) -> str:
+        return payload['power_station_value']

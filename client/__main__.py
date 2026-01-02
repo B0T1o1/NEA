@@ -163,7 +163,44 @@ class ClientC():
                                 self.send_message(self.client_socket,BureacracyCompleteMessage.encode())
                             else:
                                 self.UI.DisplayMessage(f'Waiting for {player_name} to complete bureaucracy phase.')
-
+                        elif MessageType == 'GameEndNotification':
+                            winner_name = MESSAGES.GameEndNotification.parse_payload(message)
+                            if winner_name == self.username:
+                                self.UI.DisplayMessage('Congratulations! You have won the game!')
+                            else:
+                                self.UI.DisplayMessage(f'Game over! The winner is {winner_name}. Better luck next time!')
+                        elif MessageType == 'BuyPowerStationRequest':
+                            market, current_player,valid_values,electros = MESSAGES.BuyPowerStationRequest.parse_payload(message)
+                            self.UI.DisplayMarket(market)
+                            if self.username == current_player:
+                                station_value = self.UI.GetStartingBid(False,valid_values,electros)
+                                message = MESSAGES.BuyPowerStationResponse.construct_payload(station_value)
+                                self.send_message(self.client_socket,message.encode())
+                            else:
+                                self.UI.DisplayElectros(current_player,electros)
+                                self.UI.DisplayMessage(f'Waiting for {current_player} to place their bid on a power station.')
+                                """
+                                elif MessageType ==  'BidOnPowerStation':
+                                    powerstation, min_bid, current_player,held_by_player, electros = MESSAGES.BidOnPowerStation.parse_payload(message)
+                                    if self.username == current_player:
+                                        Bid = self.UI.GetBidOnPowerStation(held_by_player,electros,min_bid,powerstation)
+                                        BidOnPowerStationResponse = MESSAGES.BidOnPowerStationResponse.construct_payload(Bid)
+                                        self.send_message(self.client_socket,BidOnPowerStationResponse.encode())
+                                    else:
+                                        self.UI.DisplayElectros(current_player,electros)
+                                        self.UI.DisplayMessage(f'Waiting for {current_player} to place their bid on the power station worth {powerstation} with a minimum bid of {min_bid}.')
+                                """
+                        elif MessageType == 'BureaucracyNotification':
+                            player, number_cities_powered = MESSAGES.BureaucracyNotification.parse_payload(message)
+                            self.UI.DisplayMessage(f'{player} has powered {number_cities_powered} cities this turn.')
+                        elif MessageType == 'DiscardPowerStationRequest':
+                            player, power_stations = MESSAGES.DiscardPowerStationRequest.parse_payload(message)
+                            if self.username == current_player:
+                                station_value = self.UI.GetPowerStationToDiscard(power_stations)
+                                message = MESSAGES.DiscardPowerStationResponse.construct_payload(station_value)
+                                self.send_message(self.client_socket,message.encode())
+                            else:
+                                self.UI.DisplayMessage(f'Waiting for {player} to discard a power station.')
                     else:
                         print('Server closed the connection.')
                         self.kill = True

@@ -1,3 +1,4 @@
+import copy
 from .PowerStation import PowerStationC
 
 class PlayerC:
@@ -60,7 +61,7 @@ class PlayerC:
             return total_space >= amount
         
     def GetResources(self):
-        return dict(self.__Resources)
+        return copy.deepcopy(self.__Resources)
 
     def UseResources(self,type:str,amount:int):
         if self.__Resources[type] >= amount:
@@ -105,16 +106,17 @@ class PlayerC:
         if len(self.__PowerStations) != 3:
             self.__PowerStations.append(PowerStation)
             self.__Electros -= cost
+            return True
         else:
-            raise ValueError # TODO
+            raise False
     
 
     def __lt__(self,other):
         if not isinstance(other, PlayerC):
             raise TypeError('Can only compare Player objects')
-        if len(self.GetCities()) < len(self.GetCities()):
+        if len(self.GetCities()) < len(other.GetCities()):
             return False
-        if len(self.GetCities()) > len(self.GetCities()):
+        if len(self.GetCities()) > len(other.GetCities()):
             return True
         if self.GetPowerStations()[-1].GetValue() >  other.GetPowerStations()[-1].GetValue():
             return True

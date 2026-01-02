@@ -44,6 +44,8 @@ class UIC():
         return self.UI.Get_City_To_Buy(electros, costs)
     def DisplayBureaucracyUpdate(self,number_of_cities:int,power_stations:List[str],resources:dict):
         return self.UI.DisplayBureaucracyUpdate(number_of_cities,power_stations,resources)
+    def GetPowerStationToDiscard(self, power_stations: List[str]) -> int:
+        return self.UI.GetPowerStationToDiscard(power_stations)
 class TUIC(UIC):
     def __init__(self):
         pass
@@ -165,7 +167,7 @@ class TUIC(UIC):
     def DisplayMarket(self, market):
         print(market)
 
-    def GetStartingBid(self, Start_of_game: bool,valid_values,electros):
+    def GetStartingBid(self, Start_of_game: bool,valid_values,electros) -> int|bool:
         """
         Handles the starting bid selection for a player.
 
@@ -186,7 +188,7 @@ class TUIC(UIC):
             # Skip logic (only allowed after start of game)
             if not Start_of_game and user_input == 's':
                 print("You chose to skip bidding.")
-                return None
+                return False
 
             # Validate numeric input
             if not user_input.isdigit():
@@ -360,7 +362,7 @@ class TUIC(UIC):
         
         # Optional: Print a quick reference guide for the user
         print("\nIncome Reference:")
-        for i in range(1, 8): # Just showing first 7 as an example
+        for i in range(1, number_of_cities + 1): 
             print(f" {i} Cities = {CalculateIncome(i)} Electros", end=" |")
         print(" ...\n")
 
@@ -371,7 +373,7 @@ class TUIC(UIC):
             p_id = station_data.get('Value')
             p_type = station_data.get('FuelType')
             cities_added = station_data.get('CitiesPowered', 1)
-            fuel_needed = station_data.get('CitiesPowered', 1) # Assuming cost = cities count default
+            fuel_needed = station_data.get('FuelAmount', 1) # Assuming cost = cities count default
 
             # Calculate "What If" scenarios
             current_income = CalculateIncome(total_cities_powered)
@@ -448,6 +450,24 @@ class TUIC(UIC):
         print("\n" + "="*45)
         print(f"FINAL PLAN: Power {total_cities_powered} Cities for {CalculateIncome(total_cities_powered)} Electros")
         return plan
+    def GetPowerStationToDiscard(self, power_stations: List[str]) -> int:
+        print("You need to discard a power station. Here are your options:")
+        station_values = []
+        for station_str in power_stations:
+            station_data = str_to_station_dict(station_str)
+            p_id = station_data.get('Value')
+            p_type = station_data.get('FuelType')
+            fuel_amount = station_data.get('FuelAmount')
+            cities_powered = station_data.get('CitiesPowered', 1)
+            print(f"- ID: {p_id} | Type: {p_type} | Fuel: {fuel_amount} | Cities Powered: {cities_powered}")
+            station_values.append(p_id)
+        
+        while True:
+            user_input = input("Enter the ID of the power station you wish to discard: ").strip()
+            if user_input.isdigit() and int(user_input) in station_values:
+                return int(user_input)
+            else:
+                print("Invalid input. Please enter a valid power station ID from the list above.")
 
 class GUIC(UIC):
     pass
@@ -477,7 +497,7 @@ def str_to_station_dict(station_string: str) -> dict:
                 data[key] = int(value)
                 
     return data
-def CalculateIncome(self, number_of_cities: int) -> int:
+def CalculateIncome( number_of_cities: int) -> int:
         """
         Calculates income based on the number of cities a player powers.
         """

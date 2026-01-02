@@ -347,11 +347,17 @@ class Server:
                     if username == game_state.Get_Next_Bidder_in_Round():
                         bid_amount = MESSAGES.BidOnPowerStationResponse.parse_payload(message)
                         if bid_amount is False:
-                            winning_player, winning_bid, station_info = game_state.Resign_From_Bidding(username)
+                            winning_player, winning_bid, station_info, needs_to_discard = game_state.Resign_From_Bidding(username)
+                            if needs_to_discard:
+                                    # Notify player to discard a power station
+                                    DiscardPowerStationMessage = MESSAGES.DiscardPowerStationRequest.construct_payload(winning_player.GetName(), game_state.Get_PowerStations_of(winning_player.GetName()))
+                                    self.Broadcast_to_game(game_id, DiscardPowerStationMessage)
+
                             if winning_player:
                                 message = MESSAGES.PlayerBoughtPowerStation.construct_payload(winning_player,station_info,winning_bid)
                                 self.Broadcast_to_game(game_id,message)
                                 # Proceed to next power station or next phase
+
                                 next_player = game_state.Get_Next_Bidder()
                                 if next_player:
                                     market  = game_state.Get_Current_Market_String()
@@ -359,7 +365,6 @@ class Server:
                                     BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
                                     self.Broadcast_to_game(game_id,BuyStartingStationMessage)
                                 else:
-                                    #should not happen here but just in case
                                     game_state.Finish_Auction()
                                     game_state.Do_Resource_Buying()
                                     self.send_Board_to_everyone(game_id)
@@ -382,6 +387,28 @@ class Server:
                                 min_bid, station_info, held_by_player = game_state.Get_info_Bidding_Round()
                                 BidOnPowerStationMessage = MESSAGES.BidOnPowerStation.construct_payload(station_info,min_bid,next_player,held_by_player,game_state.Get_electros_of(next_player))
                                 self.Broadcast_to_game(game_id,BidOnPowerStationMessage)
+                if msg_type == 'DiscardPowerStationResponse':
+                    power_station_value = MESSAGES.DiscardPowerStationResponse.parse_payload(message)
+                    if username == game_state.Get_Waiting_Discard_Player():
+                        discarded = game_state.Discard_PowerStation(username,power_station_value)
+                        next_player = game_state.Get_Next_Bidder()
+                        if discarded:
+                            if next_player:
+                                market  = game_state.Get_Current_Market_String()
+                                valid_values = game_state.Get_Valid_station_values()
+                                BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+                            else:
+                                game_state.Finish_Auction()
+                                game_state.Do_Resource_Buying()
+                                self.send_Board_to_everyone(game_id)
+                                costs = game_state.Get_Resource_Costs()
+                                next_player = game_state.Get_Next_Resource_Buyer()
+                                stations = game_state.Get_PowerStations_of(next_player)
+                                resource_space = game_state.Get_Resource_Space_of(next_player)
+                                BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                self.Broadcast_to_game(game_id,BuyResourcesMessage)
+
 
                 if msg_type == 'BuyResourcesResponse':
                     if username == game_state.Get_Next_Resource_Buyer():
@@ -417,27 +444,120 @@ class Server:
                             self.Broadcast_to_game(game_id,BuyResourcesMessage)
 
                 if msg_type == 'BuyCityResponse':
-                    self.send_Board_to_everyone(game_id)
                     if username == game_state.Get_Next_City_Buyer():
                         city_id = MESSAGES.BuyCityResponse.parse_payload(message)
-                        if game_state.Player_Buy_City(username,city_id):
+                        bought = game_state.Player_Buy_City(username,city_id)
+                        if bought == True:
                             next_player = game_state.Get_Next_City_Buyer()
                             if next_player:
                                 costs = game_state.Get_City_Costs(next_player)
+                                self.send_Board_to_everyone(game_id)
                                 BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player),costs)
                                 self.Broadcast_to_game(game_id,BuyCityRequestMessage)
+
+
                             elif game_state.Finish_City_Buying():
                                 game_state.Do_Bureaucracy()
                                 self.send_Board_to_everyone(game_id)
                                 next_player, electros , number_of_cities, power_stations, resources = game_state.Get_Info_For_Bureaucracy()
+                                BureaucracyUpdateMessage = MESSAGES.BureaucracyUpdate.construct_payload(next_player,electros,number_of_cities,power_stations,resources)
+                                self.Broadcast_to_game(game_id,BureaucracyUpdateMessage)
 
 
                         else:
-                            BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(username,game_state.Get_electros_of(next_player),game_state.Get_City_Costs(next_player))
+                            BuyCityRequestMessage = MESSAGES.BuyCityRequest.construct_payload(username,game_state.Get_electros_of(username),game_state.Get_City_Costs(username))
                             self.Broadcast_to_game(game_id,BuyCityRequestMessage)
-                            costs = game_state.Get_City_Costs(next_player)
+                            costs = game_state.Get_City_Costs(username)
+
+                if msg_type == 'BureaucracyComplete':
+                    power_station_dict_str = MESSAGES.BureaucracyComplete.parse_payload(message)
+                    power_station_dict = ast.literal_eval(power_station_dict_str)
+                    cities = game_state.Player_Do_Bureaucracy(username,power_station_dict)
+
+                    if cities is False:
+                        # Invalid bureaucracy, ask again
+                        next_player, electros , number_of_cities, power_stations, resources = game_state.Get_Info_For_Bureaucracy()
+                        BureaucracyUpdateMessage = MESSAGES.BureaucracyUpdate.construct_payload(next_player,electros,number_of_cities,power_stations,resources)
+                        self.Broadcast_to_game(game_id,BureaucracyUpdateMessage)
+                        
+                    BureaucracyNotificationMessage = MESSAGES.BureaucracyNotification.construct_payload(username, cities)
+                    self.Broadcast_to_game(game_id,BureaucracyNotificationMessage)
+                    self.send_Board_to_everyone(game_id)
+                    next_player, electros , number_of_cities, power_stations, resources = game_state.Get_Info_For_Bureaucracy()
+                    if next_player:
+                        BureaucracyUpdateMessage = MESSAGES.BureaucracyUpdate.construct_payload(next_player,electros,number_of_cities,power_stations,resources)
+                        self.Broadcast_to_game(game_id,BureaucracyUpdateMessage)
+                    else:
+                        winner = game_state.Check_Stage_Change_And_Win()
+                        # Proceed to next turn
+                        if winner:
+                            # End Game
+                            print(f"Game {game_id} ended. Winner: {winner}")
+                            # Notify players about the winner
+                            # (Implementation of GameEndNotification message is assumed)
+                            GameEndMessage = MESSAGES.GameEndNotification.construct_payload(winner)
+                            self.Broadcast_to_game(game_id, GameEndMessage)
+                            return  # Exit the game loop
+                        
+                        self.send_Board_to_everyone(game_id)
+
+                        if game_state.Start_Auction():
+                            next_player = game_state.Get_Next_Bidder()
+                            market  = game_state.Get_Current_Market_String()
+                            valid_values = game_state.Get_Valid_station_values()
+                            BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                            self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+                        else:
+                            raise Exception("Failed to start auction after bureaucracy.")
+
+                if msg_type == 'BuyPowerStationResponse':
+                    if username == game_state.Get_Next_Bidder():
+                        power_station_value = MESSAGES.BuyPowerStationResponse.parse_payload(message)
+                        if power_station_value is False:
+                            game_state.Resign_from_auction(username)
+                            next_player = game_state.Get_Next_Bidder()
+                            if next_player:
+                                market  = game_state.Get_Current_Market_String()
+                                valid_values = game_state.Get_Valid_station_values()
+                                BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+
+                            if game_state.Finish_Auction():
+                                    game_state.Do_Resource_Buying()
+                                    self.send_Board_to_everyone(game_id)
+                                    costs = game_state.Get_Resource_Costs()
+                                    next_player = game_state.Get_Next_Resource_Buyer()
+                                    stations = game_state.Get_PowerStations_of(next_player)
+                                    resource_space = game_state.Get_Resource_Space_of(next_player)
+                                    BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                    self.Broadcast_to_game(game_id,BuyResourcesMessage)
+
+                        if game_state.Starting_Bid_on_Power_Station(username,power_station_value):
+                            if game_state.Finish_Auction():
+                                    game_state.Do_Resource_Buying()
+                                    self.send_Board_to_everyone(game_id)
+                                    costs = game_state.Get_Resource_Costs()
+                                    next_player = game_state.Get_Next_Resource_Buyer()
+                                    stations = game_state.Get_PowerStations_of(next_player)
+                                    resource_space = game_state.Get_Resource_Space_of(next_player)
+                                    BuyResourcesMessage = MESSAGES.BuyResourcesRequest.construct_payload(next_player,costs,stations,resource_space)
+                                    self.Broadcast_to_game(game_id,BuyResourcesMessage)
+                            else:
+                                next_player = game_state.Get_Next_Bidder_in_Round()
+                                min_bid, station_info, held_by_player = game_state.Get_info_Bidding_Round()
+                                BidOnPowerStationMessage = MESSAGES.BidOnPowerStation.construct_payload(station_info,min_bid,next_player,held_by_player,game_state.Get_electros_of(next_player))
+                                self.Broadcast_to_game(game_id,BidOnPowerStationMessage)
 
 
+                        else:
+                            print("Invalid station bid")
+                            market  = game_state.Get_Current_Market_String()
+                            valid_values = game_state.Get_Valid_station_values()
+                            next_player  = game_state.Get_Next_Bidder()
+                            BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                            self.Broadcast_to_game(game_id,BuyStartingStationMessage)
+                    else:
+                        pass
 
 
                         
