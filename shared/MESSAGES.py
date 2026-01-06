@@ -52,19 +52,26 @@ class LoginConfirmation(Message):
 
 class GameStartNotification(Message):
     @staticmethod
-    def construct_payload(game_id:int, players:list[str]):
+    def construct_payload(game_id:int, players:list[list[str,int,int,int]]):
         return str({'MessageType':'GameStartNotification','game_id':game_id,'players':players})
     @staticmethod
-    def parse_payload(payload) -> tuple[int,list[str]]:
+    def parse_payload(payload) -> tuple[int,list[list[str,int,int,int]]]:
         return (payload['game_id'], payload['players'])
-    
-class BoardDisplay(Message):
+class StartBoardDisplay(Message):
     @staticmethod
-    def construct_payload(board_state:dict) -> str:
-        return str({'MessageType':'BoardDisplay','board_state':board_state})
+    def construct_payload(board_state:dict):
+        return str({'MessageType':'StartBoardDisplay','board_state':board_state})
     @staticmethod
     def parse_payload(payload) -> dict:
         return payload['board_state']
+    
+class BoardDisplay(Message):
+    @staticmethod
+    def construct_payload(board_state:dict,powerstation_market, resource_market, electros, player_resources_stations_dict) -> str:
+        return str({'MessageType':'BoardDisplay','board_state':board_state, 'powerstation_market': powerstation_market, 'resource_market': resource_market, 'electros': electros, 'player_resources_stations_dict': player_resources_stations_dict})
+    @staticmethod
+    def parse_payload(payload) -> tuple[dict,dict,dict,list[int],dict]:
+        return payload['board_state'], payload['powerstation_market'], payload['resource_market'], payload['electros'], payload['player_resources_stations_dict']
     
 class BuyStartingCityRequest(Message):
     @staticmethod

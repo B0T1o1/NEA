@@ -102,13 +102,13 @@ class PlayerC:
     def RemovePowerStation(self,PowerStation:PowerStationC):
         self.__PowerStations.remove(PowerStation)
     
-    def BuyPowerstation(self,PowerStation:PowerStationC,cost):
+    def BuyPowerstation(self,PowerStation:PowerStationC,cost) -> bool:
         if len(self.__PowerStations) != 3:
             self.__PowerStations.append(PowerStation)
             self.__Electros -= cost
-            return True
+            return False
         else:
-            raise False
+            return True
     
 
     def __lt__(self,other):
