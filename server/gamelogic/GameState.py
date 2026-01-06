@@ -548,6 +548,7 @@ class Phase2:
         player.RemovePowerStation(station)
         self._Waiting_for_discard_player = None
         self._In_BRound = False
+        player.BuyPowerstation(self._BRound.GetStation(),self._BRound.Get_Winning_Bid())
         return True
     
     #Returns list of players still to buy not in bidding round

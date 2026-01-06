@@ -10,11 +10,12 @@ import datetime
 from shared import MESSAGES
 from shared.encryption import RSA
 from .gamelogic.GameState import GameStateC
-from typing import List
+from typing import List,Union
 import queue  
 import ast
 import struct
 from .Databasemanager import DataBaseManagerC
+from .ai import AIPlayer
 
 class Server:
     RECIEVE_LENGTH = 8
@@ -32,7 +33,7 @@ class Server:
         self.Client_sending_status: dict[int,bool] = {}
         self.Logged_in_clients: List[str]  = []
         self.lobby_game_index = 0
-        self.games: List[dict[str,socket.socket]] = []
+        self.games: List[dict[str,Union[socket.socket,AIPlayer]]] = []
         self.game_states: dict[int, GameStateC] = {} # stores the game state for each active game
         self.game_locks: dict[int, threading.Lock] = {}  # Stores a lock for each active game
         self.client_keys: dict[int, tuple[int,int]] = {} # Stores the private_key for each client socket
@@ -200,9 +201,12 @@ class Server:
             # Start the Main Game Loop in a separate thread so it doesn't block the server
             threading.Thread(target=self.game_logic_loop, args=(game_id,), daemon=True).start()
 
-    def send_message(self,client_socket:socket.socket,message:str):
+    def send_message(self,client_socket:AIPlayer|socket.socket,message:str):
         length_of_message = len(message)
         sent = False
+        if isinstance(client_socket, AIPlayer):
+            client_socket.EnqueueMessage(message)
+            return
         while not sent:
             if self.Client_sending_status[client_socket.fileno()] == False:
                 self.Client_sending_status[client_socket.fileno()] = True
@@ -212,7 +216,6 @@ class Server:
                 sent = True    
             else:
                 time.sleep(0.01)
-
 
     def send_Board_to_everyone(self,game_id):
         with self.game_locks[game_id]:
@@ -605,6 +608,22 @@ class Server:
         # --- CLEANUP ---
         print(f"Handle_Player thread for {username} stopping.")
         # Add code here to notify the GameLoop that a player has left!
+
+    def Handle_AI_Player(self, game_id, ai_player: AIPlayer, username: str):
+        while not self.kill:
+            try:
+                message = ai_player.GetNextMessage()
+                if message:
+                    self.game_queues[game_id].append((username, message))
+                else:
+                    time.sleep(0.2)
+            except Exception as e:
+                print(f"Error in Handle_AI_Player for {username}: {e}")
+                break
+        
+        # --- CLEANUP ---
+        print(f"Handle_AI_Player thread for {username} stopping.")
+        # Add code here to notify the GameLoop that an AI player has left!
 
     def check_and_start_games(self):
         while not self.kill:
