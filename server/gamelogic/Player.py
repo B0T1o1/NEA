@@ -15,7 +15,7 @@ class PlayerC:
         self.__PowerStations.sort()
         return self.__PowerStations
     
-    def GetResourceSpace(self) -> dict:
+    def GetResourceSpace(self) -> dict[str,int]:
             available = { 'C':0, 'O':0, 'H':0, 'G':0, 'N':0, 'R':0}
             
             # 1. Calculate total raw capacity based on stations

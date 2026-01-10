@@ -15,12 +15,12 @@ class AIPlayer:
         Args:
             name (str): Name of Ai player
         """
-        self._Name = name
-        self._latest_board_state = None
+        self._Name: str = name
+        self._latest_board_state: dict[str, dict] = {}
         self._inventories: dict[str, dict[str, int]] = {}
         self._electros:dict[str,int] = {}
-        self._PowerStation_Market = None
-        self._Resource_Market = None
+        self._PowerStation_Market: dict = {}
+        self._Resource_Market: dict = {}
         self._Receive_Message_Queue:List[tuple[str]] = []
         self._Send_Message_Queue:List[tuple[str]] = []
         self._lock = threading.Lock()
@@ -51,10 +51,10 @@ class AIPlayer:
             print(f"AI {self._Name} received message of type: {messageType}")
             # Logic to handle board state updates immediately
             if messageType == 'BoardDisplay':
-                board_state, powerstation_market, resource_market, electros, player_resources_stations_dict = MESSAGES.BoardDisplay.parse_payload(message_dict)
+                board_state, powerstation_market_str, resource_market, electros, player_resources_stations_dict = MESSAGES.BoardDisplay.parse_payload(message_dict)
                 self._latest_board_state = board_state
-                powerstation_market = powerstation_market.replace("inf", "'inf'")
-                self._PowerStation_Market = ast.literal_eval(powerstation_market)
+                powerstation_market_str = powerstation_market_str.replace("inf", "'inf'")
+                self._PowerStation_Market = ast.literal_eval(powerstation_market_str)
                 self._Resource_Market = resource_market
                 self._inventories = player_resources_stations_dict
                 self._electros = electros
@@ -87,7 +87,11 @@ class AIPlayer:
                 time.sleep(0.1)
     
     def GetNextMessage(self):
-        """Gets the next message the AI has prepared to send"""
+        """Gives the oldest message to the server for proccessing
+
+        Returns:
+            str: The next message string to be sent to the server
+        """
         with self._lock:  # Use the threading lock
             if self._Send_Message_Queue:
                 # Returns the message string (e.g., "{'MessageType': '...'}")
@@ -102,48 +106,56 @@ class AIPlayer:
             message (str): Message string in MESSAGES format
         """
         message_type = MESSAGES.Message.parse_payload(message)
+
         if message_type == 'BuyStartingCityRequest':
             current_player, electros = MESSAGES.BuyStartingCityRequest.parse_payload(message)
             if current_player == self._Name:
                 city_id_to_buy = self._StartingCityPurchase()
                 buy_city_message = MESSAGES.BuyStartingCityResponse.construct_payload(city_id_to_buy)
                 self._Send_Message_Queue.append(buy_city_message)
+
         if message_type == 'BuyStartingStationRequest':
             market, current_player,values, electros = MESSAGES.BuyStartingStationRequest.parse_payload(message)
             if current_player == self._Name:
                     station_id_to_buy = self._StartingStationPurchase(values)
                     buy_station_message = MESSAGES.BuyStartingStationResponse.construct_payload(station_id_to_buy)
                     self._Send_Message_Queue.append(buy_station_message)
+
         if message_type == 'BidOnPowerStation':
             powerstation, min_bid, current_player, held_by_player, electros = MESSAGES.BidOnPowerStation.parse_payload(message)
             if current_player == self._Name:
                 bid_amount = self._BidOnPowerStation(min_bid, electros,powerstation ,held_by_player)
                 bid_message = MESSAGES.BidOnPowerStationResponse.construct_payload(bid_amount)
                 self._Send_Message_Queue.append(bid_message)
+
         if message_type == 'BuyResourcesRequest':
             current_player,resource_costs, power_stations, resource_space = MESSAGES.BuyResourcesRequest.parse_payload(message)
             if current_player == self._Name:
                 resources_to_buy = self._BuyResourcesDecision(resource_costs, power_stations, resource_space)
                 buy_resources_message = MESSAGES.BuyResourcesResponse.construct_payload(resources_to_buy)
                 self._Send_Message_Queue.append(buy_resources_message)
+
         if message_type == 'BuyCityRequest':
             current_player, electros,city_costs = MESSAGES.BuyCityRequest.parse_payload(message)
             if current_player == self._Name:
                 city_id_to_buy = self._BuyCityDecision(city_costs, electros)
                 buy_city_message = MESSAGES.BuyCityResponse.construct_payload(city_id_to_buy)
                 self._Send_Message_Queue.append(buy_city_message)
+                
         if message_type == 'BureaucracyUpdate':
             current_player, electros, number_of_cities, power_stations, resources = MESSAGES.BureaucracyUpdate.parse_payload(message)
             if current_player == self._Name:
                 Choose_to_power_message = self._Choose_Stations_to_power(electros, number_of_cities, power_stations, resources)
                 power_stations_message = MESSAGES.BureaucracyComplete.construct_payload(Choose_to_power_message)
                 self._Send_Message_Queue.append(power_stations_message)
+
         if message_type == 'BuyPowerStationRequest':
             market, current_player, electros, valid_values = MESSAGES.BuyPowerStationRequest.parse_payload(message)
             if current_player == self._Name:
                 station_to_buy = self._BuyStationDecision( valid_values, electros, market)
                 buy_stations_message = MESSAGES.BuyPowerStationResponse.construct_payload(station_to_buy)
                 self._Send_Message_Queue.append(buy_stations_message)
+
         if message_type == 'DiscardPowerStationRequest':
             current_player,power_stations = MESSAGES.DiscardPowerStationRequest.parse_payload(message)
             if current_player == self._Name:
