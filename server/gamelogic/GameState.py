@@ -146,9 +146,9 @@ class GameStateC:
     def Start_Auction(self):
         if self.__Phase == 2:
             if self._Round == 0:
-                self.__Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players)
+                self.__Phase2 = Phase2StartingRound(self.__PowerStationMarket,self.__Players,self.__stage)
             else:
-                self.__Phase2 = Phase2(self.__PowerStationMarket,self.__Players)
+                self.__Phase2 = Phase2(self.__PowerStationMarket,self.__Players,self.__stage)
             return True
         return False
     
@@ -423,7 +423,7 @@ class GameStateC:
     def Check_Stage_Change_And_Win(self):
         if self.__Phase != 5:
             raise Exception("Not in Phase 5")
-        winner = self.__Phase5.CheckStageChangeAndWin()
+        winner,self.__stage = self.__Phase5.CheckStageChangeAndWin()
         if winner:
             return winner.GetName()
         self._Round += 1
@@ -456,11 +456,14 @@ class Phase1:
     
 
 class Phase2:
-    def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
+    def __init__(self,PS_Market:PS_Market,players:List[PlayerC],stage:int):
         self._PS_Market = PS_Market
         self._Players = players
         self._Players_to_buy = list(players)
-        self._Discount = True
+        if stage <  3:
+            self._Discount = True
+        else:
+            self._Discount = False
         self._In_BRound = False
         self._BRound: BiddingRound
         self._Waiting_for_discard_player: PlayerC = None
@@ -500,15 +503,17 @@ class Phase2:
                 self._Discount = False
             else:
                 bid = station.GetValue()
-            if self._Players_to_buy == [player]:
-                #Only player left to buy station, buys at min price
-                self._PS_Market.BuyPowerStation(station)
-                player.BuyPowerstation(station,bid)
-                self._Players_to_buy.remove(player)
+            if player.CheckEnoughElectros(bid):
+                if self._Players_to_buy == [player]:
+                    
+                    #Only player left to buy station, buys at min price
+                    self._PS_Market.BuyPowerStation(station)
+                    player.BuyPowerstation(station,bid)
+                    self._Players_to_buy.remove(player)
+                    return True
+                self._BRound = BiddingRound(station,self._Players_to_buy,player,bid)
+                self._In_BRound = True
                 return True
-            self._BRound = BiddingRound(station,self._Players_to_buy,player,bid)
-            self._In_BRound = True
-            return True
         
         return False
 
@@ -565,8 +570,8 @@ class Phase2:
             return False
         
 class Phase2StartingRound(Phase2):
-    def __init__(self,PS_Market:PS_Market,players:List[PlayerC]):
-        super().__init__(PS_Market,players)
+    def __init__(self,PS_Market:PS_Market,players:List[PlayerC],stage:int):
+        super().__init__(PS_Market,players,stage)
 
     def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC,int,PowerStationC,bool]:
         if self._In_BRound:
@@ -745,7 +750,7 @@ class Phase5:
         self.__Players_left_to_do_bureaucracy = list(Players)
         self.__Players_Powered_dict = {player:0 for player in Players}
         self.Restock_Resources()
-        if not Used_Discount:
+        if not Used_Discount and self.__Stage < 3:
             # Removes the discounted powerstation from the market is not used
             self.__PowerStationMarket.RemoveDiscountedPowerStation()
             
@@ -760,7 +765,7 @@ class Phase5:
         }
         self.__NofPlayers = len(self.__Players)
         for resource in ['C','O','G','N']:
-            self.__ResourceMarket.Add_Resource(resource, ResourceAmountResupply[self.__NofPlayers][self.__Stage][resource])
+            self.__ResourceMarket.Add_Resource(resource, ResourceAmountResupply[self.__NofPlayers][self.__Stage-1][resource])
         
     def GetInfoForBureaucracy(self) -> tuple[PlayerC|bool,int,int,List[PowerStationC],dict[str,int]]:
         if not self.__Players_left_to_do_bureaucracy:
@@ -857,7 +862,7 @@ class Phase5:
                 elif self.__Players_Powered_dict[player] == highest_score:
                     highest_player.append(player)
             if len(highest_player) == 1:
-                return highest_player[0]
+                return highest_player[0],self.__Stage
             # If there's a tie, we need to check who has the most money
             if len(highest_player) > 1:
                 Most_Money = 0
@@ -868,7 +873,7 @@ class Phase5:
                         Player_With_most_money = player
                         Most_Money = Electros
                         #player with most money win
-                return Player_With_most_money
-        return None
+                return Player_With_most_money,self.__Stage
+        return None, self.__Stage
 
 

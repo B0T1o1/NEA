@@ -10,7 +10,7 @@ from shared.encryption import RSA
 from math import inf
 
 class ClientC:
-    RECEIVE_LENGTH = 8  # Fixed typo (EI -> IE)
+    RECEIVE_LENGTH = 8  
 
     def __init__(self, host='127.0.0.1', port=65432):
         self.host = host
@@ -176,7 +176,7 @@ class ClientC:
                             self.UI.DisplayMessage(f'Game over! The winner is {winner_name}.')
 
                     elif MessageType == 'BuyPowerStationRequest':
-                        market, current_player, valid_values, electros = MESSAGES.BuyPowerStationRequest.parse_payload(message)
+                        market, current_player, electros,valid_values = MESSAGES.BuyPowerStationRequest.parse_payload(message)
                         self.UI.DisplayMarket(market)
                         if self.username == current_player:
                             station_value = self.UI.GetStartingBid(False, valid_values, electros)

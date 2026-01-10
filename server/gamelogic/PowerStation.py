@@ -11,7 +11,7 @@ class PowerStationC:
         return self.__Value
     
     def GetFuelWord(self) -> str:
-        return self.__Fuel_To_word[self.__FuelType]
+        return self.__Fuel_To_word.get(self.__FuelType)
     
     def GetFuelType(self) -> str:
         return self.__FuelType
@@ -28,7 +28,7 @@ class PowerStationC:
         # Works for both PowerStationC and Stage3
         return (
             f"Value={self.GetValue()}, "
-            f"FuelType={self.GetFuelType()} ({getattr(self, 'GetFuelWord', lambda: self.GetFuelType())()}), "
+            f"FuelType={self.GetFuelType()} ({self.GetFuelWord()}), "
             f"FuelAmount={self.GetFuelAmount()}, "
             f"CitiesPowered={self.GetNumberOfCitiesPowered()}"
         )
@@ -50,7 +50,7 @@ class PowerStationC:
     def __lt__(self,other):
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
-        return self.__Value < other.__Value 
+        return self.__Value < other.GetValue() 
 
     def CheckSuffficentFuel(self, fuel_dict:dict[str,int]) -> bool:
         """

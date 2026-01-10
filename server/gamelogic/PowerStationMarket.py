@@ -66,11 +66,13 @@ class PS_Market:
                 if self.__stage != 3:
                     if 0 <= index < 4:
                         self.__Market.pop(index)
-                        self.__Market.append(self.__Deck.pop(0))
+                        if self.__Deck:
+                            self.__Market.append(self.__Deck.pop(0))
                         self.__Market.sort()
                 else:
                     self.__Market.pop(index)
-                    self.__Market.append(self.__Deck.pop(0))
+                    if self.__Deck:
+                        self.__Market.append(self.__Deck.pop(0))
                     self.__Market.sort()                
                 return Station
             
@@ -79,14 +81,15 @@ class PS_Market:
 
     def RemoveDiscountedPowerStation(self):
         if self.__stage != 3:
-            self.__Market.pop(0)
-            self.__Market.append(self.__Deck.pop(0))
+            self.__Market.pop(0)    
+            if self.__Deck:
+                self.__Market.append(self.__Deck.pop(0))
             self.__Market.sort()
         else:
             raise ValueError("Cannot remove discounted powerstation in stage 3")
 
     def Stage2(self):
-        self.BuyPowerStation(self.GiveMarket()[0][0].GetValue())
+        self.BuyPowerStation(self.GiveMarket()[0][0])
         self.__stage = 2
         return
 
@@ -121,7 +124,9 @@ class Stage3(PowerStationC):
     def GetValue(self) -> int:
         return self.__Value
     def GetFuelType(self) -> str:
-        return self.__Fuel_To_word[self.__FuelType]
+        return self.__FuelType
+    def GetFuelWord(self):
+        return 'Stage3'
     def GetFuelAmount(self) -> int:
         return self.__FuelAmount
     def GetNumberOfCitiesPowered(self):
@@ -131,7 +136,7 @@ class Stage3(PowerStationC):
     def __lt__(self,other):
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
-        return self.__Value < other.__Value
+        return self.__Value < other.GetValue()
     
 
 if __name__ == "__main__":

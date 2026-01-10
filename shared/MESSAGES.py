@@ -78,7 +78,7 @@ class BuyStartingCityRequest(Message):
     def construct_payload(current_player,electros):
         return str({'MessageType':'BuyStartingCityRequest', 'current_player':current_player,'electros':electros})
     @staticmethod
-    def parse_payload(payload) -> str:
+    def parse_payload(payload) -> tuple[str,int]:
         return payload['current_player'], payload['electros']
     
 class BuyStartingCityResponse(Message):

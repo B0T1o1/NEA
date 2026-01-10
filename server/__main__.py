@@ -15,8 +15,8 @@ import queue
 import ast
 import struct
 from .Databasemanager import DataBaseManagerC
-from .ai import AIPlayer
-
+from .ai import AIPlayer,HardAIPlayer
+import random
 class Server:
     RECIEVE_LENGTH = 8
     def __init__(self, host: str = '127.0.0.1', port: int = 65432):
@@ -37,8 +37,8 @@ class Server:
         self.game_states: dict[int, GameStateC] = {} # stores the game state for each active game
         self.game_locks: dict[int, threading.Lock] = {}  # Stores a lock for each active game
         self.client_keys: dict[int, tuple[int,int]] = {} # Stores the private_key for each client socket
-        self.game_queues: dict[int,List[tuple[str, MESSAGES.Message]]] = {}
-        self.MAX_CLIENTS = 3
+        self.game_queues: dict[int,queue.Queue[tuple[str, MESSAGES.Message]]] = {}
+        self.MAX_CLIENTS = 6
         self.MIN_CLIENTS = 3
         self.kill = False
         self.Rankings_to_be_updated: List[tuple[str,dict[str,int]]] = [] # List of (winner,dict(username, electros)) to update rankings 
@@ -59,7 +59,8 @@ class Server:
                 threading.Thread(target=self.Set_up_client,args=(connn,)).start()
             except socket.timeout:
                 pass
-            
+    
+
     
     def Set_up_client(self, client_socket: socket.socket):
         # 1. Initialize variables 
@@ -174,6 +175,14 @@ class Server:
     def start_game(self, game_id):
             """Initializes the game and starts the Game Loop Thread."""
             players = self.games[game_id]
+            if len(players) < self.MAX_CLIENTS:
+                for i in range(random.randint(1, self.MAX_CLIENTS - len(players))):
+                    chance = random.random()
+                    if chance < 0.5: # 50% chance to add an AI player, 50% for a hard AI player
+                        self.games[game_id][f'AI_player_{i+1}'] = AIPlayer(f'AI_player_{i+1}')
+                    else:
+                        self.games[game_id][f'Hard_AI_player_{i+1}'] = HardAIPlayer(f'Hard_AI_player_{i+1}')
+            players = self.games[game_id]
             print(f"Initializing game {game_id} with players: {[p for p in players.keys()]}")
             
             # Initialize State
@@ -194,14 +203,17 @@ class Server:
 
             for username, client_socket in players.items():
                 try:
-                    threading.Thread(target=self.Handle_Player, args=(game_id, client_socket, username), daemon=True).start()
+                    if isinstance(client_socket, AIPlayer):
+                        threading.Thread(target=self.Handle_AI_Player, args=(game_id, client_socket, username), daemon=True).start()
+                    else:
+                        threading.Thread(target=self.Handle_Player, args=(game_id, client_socket, username), daemon=True).start()
                 except Exception as e:
                     print(f'Failed to start player {username}: {e}')
 
             # Start the Main Game Loop in a separate thread so it doesn't block the server
             threading.Thread(target=self.game_logic_loop, args=(game_id,), daemon=True).start()
 
-    def send_message(self,client_socket:AIPlayer|socket.socket,message:str):
+    def send_message(self,client_socket:AIPlayer|socket.socket,message:bytes):
         length_of_message = len(message)
         sent = False
         if isinstance(client_socket, AIPlayer):
@@ -340,7 +352,7 @@ class Server:
                                         BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
                                         self.Broadcast_to_game(game_id,BuyStartingStationMessage)
                                     else:
-                                        BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                        BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,game_state.Get_electros_of(next_player),valid_values)
                                         self.Broadcast_to_game(game_id,BuyPowerStationMessage)
                                 elif not next_player and not needs_to_discard:
                                     game_state.Finish_Auction()
@@ -377,7 +389,7 @@ class Server:
                                 self.send_Board_to_everyone(game_id)
                                 market  = game_state.Get_Current_Market_String()
                                 valid_values = game_state.Get_Valid_station_values()
-                                BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,game_state.Get_electros_of(next_player),valid_values)
                                 self.Broadcast_to_game(game_id,BuyPowerStationMessage)
                             else:
                                 game_state.Finish_Auction()
@@ -489,7 +501,7 @@ class Server:
                             next_player = game_state.Get_Next_Bidder()
                             market  = game_state.Get_Current_Market_String()
                             valid_values = game_state.Get_Valid_station_values()
-                            BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                            BuyPowerStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,game_state.Get_electros_of(next_player),valid_values)
                             self.Broadcast_to_game(game_id,BuyPowerStationMessage)
                         else:
                             raise Exception("Failed to start auction after bureaucracy.")
@@ -504,7 +516,7 @@ class Server:
                                 self.send_Board_to_everyone(game_id)
                                 market  = game_state.Get_Current_Market_String()
                                 valid_values = game_state.Get_Valid_station_values()
-                                BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                                BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,game_state.Get_electros_of(next_player),valid_values)
                                 self.Broadcast_to_game(game_id,BuyStartingStationMessage)
 
                             if game_state.Finish_Auction():
@@ -541,7 +553,7 @@ class Server:
                             market  = game_state.Get_Current_Market_String()
                             valid_values = game_state.Get_Valid_station_values()
                             next_player  = game_state.Get_Next_Bidder()
-                            BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
+                            BuyStartingStationMessage = MESSAGES.BuyPowerStationRequest.construct_payload(market,next_player,game_state.Get_electros_of(next_player),valid_values)
                             self.Broadcast_to_game(game_id,BuyStartingStationMessage)
                     else:
                         pass
@@ -612,25 +624,29 @@ class Server:
     def Handle_AI_Player(self, game_id, ai_player: AIPlayer, username: str):
         while not self.kill:
             try:
-                message = ai_player.GetNextMessage()
-                if message:
-                    self.game_queues[game_id].append((username, message))
+                # 1. Get the message (This is currently a STRING)
+                message_str = ai_player.GetNextMessage()
+                
+                if message_str:
+                    # 2. CONVERT String -> Dictionary
+                    try:
+                        message_dict = ast.literal_eval(message_str)
+                        self.game_queues[game_id].put((username, message_dict))
+                    except Exception as e:
+                        print(f"Error parsing AI message from {username}: {e}")
                 else:
                     time.sleep(0.2)
             except Exception as e:
                 print(f"Error in Handle_AI_Player for {username}: {e}")
                 break
-        
-        # --- CLEANUP ---
-        print(f"Handle_AI_Player thread for {username} stopping.")
-        # Add code here to notify the GameLoop that an AI player has left!
 
     def check_and_start_games(self):
         while not self.kill:
-            if len(self.ready_clients) >= self.MIN_CLIENTS:
+            number_of_ready_clients = len(self.ready_clients)
+            if number_of_ready_clients >= self.MIN_CLIENTS:
                 self.games.append({})
                 self.lobby_game_index = len(self.games) - 1
-                while len(self.games[self.lobby_game_index].keys()) < self.MAX_CLIENTS:
+                for i in range(min(number_of_ready_clients, self.MAX_CLIENTS)):
                     client = self.ready_clients.pop(0)
                     self.games[self.lobby_game_index][client[0]] = client[1]
                 if len(self.games[self.lobby_game_index]) >= self.MIN_CLIENTS:
