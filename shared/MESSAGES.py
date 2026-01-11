@@ -67,10 +67,10 @@ class StartBoardDisplay(Message):
     
 class BoardDisplay(Message):
     @staticmethod
-    def construct_payload(board_state:dict,powerstation_market:str, resource_market:dict, electros:list[int], player_resources_stations_dict:dict) -> str:
+    def construct_payload(board_state:dict,powerstation_market:str, resource_market:dict, electros:dict[str,int], player_resources_stations_dict:dict[str, tuple[dict[str,int],list[str]]]) -> str:
         return str({'MessageType':'BoardDisplay','board_state':board_state, 'powerstation_market': powerstation_market, 'resource_market': resource_market, 'electros': electros, 'player_resources_stations_dict': player_resources_stations_dict})
     @staticmethod
-    def parse_payload(payload) -> tuple[dict,str,dict,list[int],dict]:
+    def parse_payload(payload) -> tuple[dict,str,dict,dict[str,int],dict[str, tuple[dict[str,int],list[str]]]]:
         return payload['board_state'], payload['powerstation_market'], payload['resource_market'], payload['electros'], payload['player_resources_stations_dict']
     
 class BuyStartingCityRequest(Message):

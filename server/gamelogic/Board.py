@@ -4,11 +4,19 @@ import copy
 
 
 class BoardC:
+    """Holds the infomration of teh board for the game
+    """
     def __init__(self,filename:str,map,regions:list[str]):
+        """intialises the board class
+
+        Args:
+            filename (str): file path to the board json
+            map (str): map identifier
+            regions (list[str]): list of regions to include
+        """
         try:
             file = open(filename,'r')
         except FileNotFoundError:
-            #TODO Ui errors
             pass
         map_string_to_index = {'G':0}
 
@@ -18,6 +26,8 @@ class BoardC:
         self.LoadMap()
 
     def LoadMap(self):
+        """Generates the map of cities from the board file
+        """
         self.city_ids = [city["id"] for city in self.__map_data["cities"] if city["region"] in self._regions]
         self.city_to_indexes = {city_id:i for i,city_id in enumerate(self.city_ids)}
         self.indexes_to_cities = {i:city_id for i,city_id in enumerate(self.city_ids)}
@@ -43,13 +53,31 @@ class BoardC:
 
 
     def CheckConnectionCost(self,Source_id:str,Connection_id:str) -> int:
+        """Calculates the connection cost between to cities to go directly between them
+
+        Args:
+            Source_id (str): City id of source city
+            Connection_id (str): City id of connection city
+
+        Returns:
+            int: Connection cost between the two cities
+        """
         Source_index = self.city_to_indexes[Source_id]
         Connection_index = self.city_to_indexes[Connection_id]
         return self.adjancency_matrix[Source_index][Connection_index]
     
 
 
-    def DjkstrasSearch(self,Source_id:str, Connection_id:str,PlayerName:str):
+    def DjkstrasSearch(self,Source_id:str, Connection_id:str,PlayerName:str)-> float:
+        """Calculates the cheapest cost to connect two cities using Dijkstra's algorithm, taking into account owned cities and finding the cheapest path
+        Args:
+            Source_id (str): City id of source city
+            Connection_id (str): City id of connection city
+            PlayerName (str): Name of the player trying to connect the cities
+
+        Returns:
+            int: Cheapest connection cost between the two cities for the player
+        """
         Source_index = self.city_to_indexes[Source_id]
         Connection_index = self.city_to_indexes[Connection_id]
         previous  = [None] * self.number_of_cities
@@ -75,14 +103,29 @@ class BoardC:
                     v = w
         return distances[Connection_index]
     
-    def ChangeStage(self,stage:int):
+    def ChangeStage(self,stage:int) -> bool:
+        """Updates the stage in all cities so that more players can buy into a city
+
+        Args:
+            stage (int): stage to update the cities to
+
+        Returns:
+            bool: True if stage updated successfully, False otherwise
+        """
+        if stage not in [1,2,3]:
+            return False
         for cityid in self.city_ids:
             city = self.cityIds_to_CityClass[cityid]
             city.UpdateStage(stage)
-        return
+        return True
     
     def DisplayBoardInfoBeforeGame(self):
-        # Return a JSON of the board to prevent external modification
+        """Returns a JSON of the board to prevent external modification
+
+
+        Returns:
+            _type_: _description_
+        """
         info = {
             "regions": self._regions.copy(),
             "city_Indexes": self.indexes_to_cities,
@@ -100,7 +143,7 @@ class BoardC:
 
         
 
-    def DisplayBoardInfo(self,playerstartingcity,playername):
+    def DisplayBoardInfo(self,playerstartingcity:str,playername:str)-> dict[str,list[str]|dict]:
         # Return a JSON of the board to prevent external modification
         info = {
             "regions": self._regions.copy(),
@@ -165,6 +208,3 @@ class City:
 
     
     
-
-if __name__ == '__main__':
-    BoardC('Data/board.JSON','G',["Brown","Yellow","Red","Purple"])

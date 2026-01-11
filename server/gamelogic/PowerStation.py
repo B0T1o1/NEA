@@ -1,6 +1,16 @@
 
 class PowerStationC:
-    def __init__(self,Value:int,FuelType:chr,FuelAmount:int,NumberOfCitiesPowered:int):
+    """Class to represent powerstation=
+    """
+    def __init__(self,Value:int,FuelType:str,FuelAmount:int,NumberOfCitiesPowered:int):
+        """Initalises the POwerstation class
+
+        Args:
+            Value (int): Value of powerstation
+            FuelType (str): Fueltype of powerstation, must be in ['C','O','H','G','N','R']
+            FuelAmount (int): Amount of fuel required to power the station
+            NumberOfCitiesPowered (int): Number of cities powered by this station
+        """
         self.__Value = Value
         self.__Fuel_To_word = { 'C':'Coal', 'O':'Oil', 'H':'Hybrid', 'G': 'Garbage', 'N':'Nuclear', 'R':'Renewable'}
         self.__FuelType = FuelType
@@ -8,24 +18,58 @@ class PowerStationC:
         self.__NumberOfCitiesPowered = NumberOfCitiesPowered
 
     def GetValue(self) -> int:
+        """Returns the value of the power station.
+
+        Returns:
+            int: Value of the power station
+        """
         return self.__Value
     
     def GetFuelWord(self) -> str:
+        """Returns the full name of the fuel type.
+
+        Returns:
+            str: Full name of the fuel type
+        """
         return self.__Fuel_To_word.get(self.__FuelType)
     
     def GetFuelType(self) -> str:
+        """Returns the fuel type abbreviation.
+
+        Returns:
+            str: Fuel type abbreviation
+        """
         return self.__FuelType
     
     def __repr__(self):
+        """Returns a string representation of the power station.
+
+        Returns:
+            str: String representation of the power station
+        """
         return str(self.__Value) + self.__FuelType + str(self.__NumberOfCitiesPowered)
     
     def GetFuelAmount(self) -> int:
+        """Returns the amount of fuel required to power the station.
+
+        Returns:
+            int: Amount of fuel required
+        """
         return self.__FuelAmount
-    def GetNumberOfCitiesPowered(self):
+    def GetNumberOfCitiesPowered(self) -> int:
+        """Returns the number of cities the powerstration can power
+
+        Returns:
+            int: Number of cities powered
+        """
         return self.__NumberOfCitiesPowered
 
     def station_to_str(self) -> str:
-        # Works for both PowerStationC and Stage3
+        """Turns station into string format which can easily be sent over network, client and AI have the reverse function
+
+        Returns:
+            str: Stringfied dictionary of Value,Fueltype,FuelAmount,CitiesPowedered 
+        """
         return (
             f"Value={self.GetValue()}, "
             f"FuelType={self.GetFuelType()} ({self.GetFuelWord()}), "
@@ -34,11 +78,13 @@ class PowerStationC:
         )
     
     def GetFuelOptions(self) -> list[str]:
-        """
-        Returns a list of valid fuel types this station can use.
+        """Returns a list of valid fuel types this station can use.
         - Coal ('C'), Oil ('O'), Garbage ('G'), Nuclear ('N') are single-fuel stations.
         - Hybrid ('H') can use either Coal ('C') or Oil ('O').
         - Renewable ('R') requires no fuel (empty list).
+
+        Returns:
+            list[str]: Valid fuel types this station can use
         """
         if self.__FuelType == 'H':
             return ['C', 'O']
@@ -47,7 +93,18 @@ class PowerStationC:
         else:
             return [self.__FuelType]
         
-    def __lt__(self,other):
+    def __lt__(self,other) -> bool:
+        """Less than comparison operator to allow sorting of stations in powerstation market
+
+        Args:
+            other (PowerStationC): Other powerstation to compare against
+
+        Raises:
+            TypeError: If the other object is not a PowerStationC instance
+
+        Returns:
+            bool: True if this power station's value is less than the other's value, False otherwise
+        """
         if not isinstance(other, PowerStationC):
             raise TypeError('Can only compare PowerStation objects')
         return self.__Value < other.GetValue() 

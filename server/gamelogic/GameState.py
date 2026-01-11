@@ -120,7 +120,7 @@ class GameStateC:
         """
         return [player.GetName() for player in self.__Players]
     
-    def Get_board(self,playername:str) -> dict:
+    def Get_board(self,playername:str) -> dict[str,list[str]|dict]:
         """Gets the board and returns in special dict format
 
         Args:
@@ -132,7 +132,7 @@ class GameStateC:
         playerClass = self.__PName_to_PClass[playername]
         return self.__Board.DisplayBoardInfo(playerClass.GetSourceCity(),playername)
 
-    def Get_whole_board_info(self) -> tuple[str, dict[str,List[int]], dict[str,int], dict[str,List]]:
+    def Get_whole_board_info(self) -> tuple[str, dict[str,List[int]], dict[str,int], dict[str,tuple[dict[str,int],List[str]]]]:
         """Gets all information of the game
 
         Returns:
@@ -146,7 +146,7 @@ class GameStateC:
             'N': self.__ResourceMarket.GetCostOfNuclear()
         }
         electros = {player.GetName(): player.GetElectros() for player in self.__Players}
-        player_resources_stations_dict = {player.GetName():[ player.GetResources(), [station.station_to_str() for station in player.GetPowerStations()] ] for player in self.__Players}
+        player_resources_stations_dict = {player.GetName():(player.GetResources(), [station.station_to_str() for station in player.GetPowerStations()] ) for player in self.__Players}
 
         return powerstation_market, resource_market, electros, player_resources_stations_dict
     
@@ -552,7 +552,7 @@ class GameStateC:
             raise Exception("Not in Phase 3")
         return self.__Phase3.Get_Resource_Costs()
 
-    def Buy_Resource(self,player_name:str,ResourceType:str,amount:int):
+    def Buy_Resource(self,player_name:str,ResourceType:str,amount:int) -> bool:
         """Buys a specified amount of a resource for a player
 
         Args:
@@ -563,14 +563,16 @@ class GameStateC:
         Raises:
             Exception: if not in phase 3
             IndexError: if player not found
+        Returns:
+            bool: True if the resource was bought successfully, False otherwise
         """
         if self.__Phase != 3:
             raise Exception("Not in Phase 3")
         player = self.__PName_to_PClass.get(player_name)
         if amount == 0:
-            self.Player_Finished_Buying(player_name)
+            return self.Player_Finished_Buying(player_name)
         elif player:
-            self.__Phase3.Buy_Resources(player,ResourceType,amount)
+            return  self.__Phase3.Buy_Resources(player,ResourceType,amount)
         else:
             raise IndexError(f'Player with name {player_name} not found.')
     
@@ -610,7 +612,7 @@ class GameStateC:
         else:
             raise IndexError(f'Player with name {player_name} not found.')
         
-    def Player_Finished_Buying(self,player_name:str):
+    def Player_Finished_Buying(self,player_name:str) -> bool:
         """Retires a player from phase 3, meaning they cannot buy anymore resources
 
         Args:
@@ -619,12 +621,14 @@ class GameStateC:
         Raises:
             Exception: if not in phase 3
             IndexError: if player not found
+        Returns:
+            bool: True if the player was successfully retired from buying resources, False otherwise
         """
         if self.__Phase != 3:
             raise Exception("Not in Phase 3")
         player = self.__PName_to_PClass.get(player_name)
         if player:
-            self.__Phase3.Player_Finished_Buying(player)
+            return self.__Phase3.Player_Finished_Buying(player)
         else:
             raise IndexError(f'Player with name {player_name} not found.')
     
@@ -669,7 +673,7 @@ class GameStateC:
             raise Exception("Not in Phase 4")
         return [player.GetName() for player in self.__Phase4.Get_Players()]
     
-    def Get_Next_City_Buyer(self) -> str|bool:
+    def Get_Next_City_Buyer(self) -> str|Literal[False]:
         """Gets the next player to do city buying
 
         Raises:
@@ -860,19 +864,45 @@ class GameStateC:
 
 
 class Phase1:
+    """Holds Phase 1 logic
+    """
     @staticmethod
-    def Random_Assignment(players):
+    def Random_Assignment(players:list[PlayerC]) -> list[PlayerC]:
+        """Completes phase 1 for the first round, randomly shuffling players into an order
+
+        Args:
+            players (list[PlayerC]): list of PlayerC objects representing the players
+
+        Returns:
+            list[PlayerC]: list of PlayerC objects in randomized order
+        """
         random.shuffle(players)
         return players
     @staticmethod
 
-    def Determine_Player_Order(players):
+    def Determine_Player_Order(players:list[PlayerC]) -> list[PlayerC]:
+        """Determines player order for phase 1 based on number of cities and highest power station value
+
+        Args:
+            players (list[PlayerC]): list of PlayerC objects representing the players
+        Returns:
+            list[PlayerC]: list of PlayerC objects in order
+        """
         players.sort()
         return players
     
 
 class Phase2:
+    """Holds Phase 2 logic
+    """
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC],stage:int):
+        """Intialses phase 2
+
+        Args:
+            PS_Market (PS_Market): the powerstation market
+            players (List[PlayerC]): list of PlayerC objects representing the players in phase 2 order
+            stage (int): the current stage of the game
+        """
         self._PS_Market = PS_Market
         self._Players = players
         self._Players_to_buy = list(players)
@@ -885,25 +915,55 @@ class Phase2:
         self._Waiting_for_discard_player: PlayerC|None = None
         
     def Get_Waiting_Discard_Player(self) -> PlayerC|Literal[False]:
+        """Give the player that the game is waiting for to discard their excess powerstation, or false if no such player exists
+
+        Returns:
+            PlayerC|Literal[False]: player who needs to discard a station
+        """
         if self._Waiting_for_discard_player:
             return self._Waiting_for_discard_player
         return False
     
     def Get_Next_Bidder_in_Round(self) -> PlayerC:
+        """Gets the next player who should bid in the current bidding round
+
+        Raises:
+            Exception: if not currently in a bidding round
+
+        Returns:
+            PlayerC: the next player to bid
+        """
+
         if self._In_BRound:
             return self._BRound.Get_Next_Bidder()
         else:
             raise Exception("Not in bidding round.")
 
-    def Get_info_on_BRound(self):
+    def Get_info_on_BRound(self) -> tuple[int,PowerStationC,PlayerC]:
+        """gets the information for current bidding round
+
+        Raises:
+            Exception: if not in bidding round
+
+        Returns:
+            tuple[int,PowerStationC,PlayerC]: current minimum bid, powerstation being bid on, player who currently holds the bid
+        """ 
         if self._In_BRound:
             current_bid,station,player = self._BRound.Get_Current_Bid() 
             min_bid = current_bid + 1
             return min_bid, station, player
         else:
-            return False
+            raise Exception("Not in bidding round.")
 
     def Get_Next_Bidder(self) -> PlayerC|Literal[False]:
+        """Gets the next bidder to start a bidding round
+
+        Raises:
+            Exception: if in bidding round
+
+        Returns:
+            PlayerC|Literal[False]: The name of the next player to bid, or False if no players left to bid
+        """
         if not self._In_BRound and not self._Waiting_for_discard_player:
             try:
                 return self._Players_to_buy[0]
@@ -911,7 +971,16 @@ class Phase2:
                 return False
         raise Exception("In bidding round.")
 
-    def Select_Station_For_Auction(self,station:PowerStationC,player:PlayerC):
+    def Select_Station_For_Auction(self,station:PowerStationC,player:PlayerC) -> bool:
+        """Starts a bidding round on the selected station
+
+        Args:
+            station (PowerStationC): Powerstation to bid on, must be in available market
+            player (PlayerC): The player who is selecting the station for auction
+
+        Returns:
+            bool: True if the auction was successfully started, False otherwise
+        """
         if player == self._Players_to_buy[0] and station in self._PS_Market.GiveMarket()[0] and not self._In_BRound and not self._Waiting_for_discard_player:
             
             if self._PS_Market.GiveMarket()[0][0] == station and self._Discount:
@@ -935,12 +1004,34 @@ class Phase2:
 
 
 
-    def Receive_Bid(self,player:PlayerC,cost:int):
+    def Receive_Bid(self,player:PlayerC,cost:int) -> bool:
+        """Receives a bid from a player in the bidding round and processes it
+
+        Args:
+            player (PlayerC): The player who is placing the bid
+            cost (int): The amount of the bid
+
+        Raises:
+            Exception: If not in bidding round
+        Returns:
+            bool: True if the bid was successfully placed, False otherwise
+        """
         if self._In_BRound:
             return self._BRound.Place_Bid(player,cost)
         raise Exception("Not in bidding round.")
 
     def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC|Literal[False],int,PowerStationC|Literal[False],bool]:
+        """Removes a player from the bidding round if in a bidding round or removes a player from the auction, meaning they cannot buy a powerstation this round
+
+        Args:
+            player (PlayerC): player to resign
+
+        Raises:
+            Exception: if not in bidding round and the player is not the next to buy
+
+        Returns:
+            tuple[PlayerC|Literal[False],int,PowerStationC|Literal[False],bool]: Winner of bidding round or False, winning bid, powerstation won or False, needs to discard bool
+        """
         if self._In_BRound:
             self._BRound.Resign_from_bidding(player)
 
@@ -966,30 +1057,77 @@ class Phase2:
         raise Exception("Not in bidding round.")
     
     def Discard_PowerStation(self,player:PlayerC,station:PowerStationC) -> bool:
+        """Discards the selected power station for the player specified 
+
+        Args:
+            player (PlayerC): player who needs to dsicard power station
+            station (PowerStationC): station they have chosen to discard
+
+        Returns:
+            bool: True if the power station was successfully discarded, False otherwise
+        """
         player.RemovePowerStation(station)
         self._Waiting_for_discard_player = None
         self._In_BRound = False
         player.BuyPowerstation(self._BRound.GetStation(),self._BRound.Get_Winning_Bid())
         return True
     
-    #Returns list of players still to buy not in bidding round
     def Get_Players_to_buy(self) -> List[PlayerC]:
+        """Returns a list of the players left to buy in auction
+
+        Returns:
+            List[PlayerC]: list of players left to buy in auction
+        """
         return self._Players_to_buy
     
     def Used_Discount(self)-> bool:
+        """returns true if discount has been used, false otherwise
+
+        Returns:
+            bool: true if discount has been used, false otherwise
+        """
         return not self._Discount
 
     def Finish_Auction(self) -> bool:
+        """Finishes the auction if no players left to buy, marks end of phase 2
+
+        Returns:
+            bool: true if auction is finished, false otherwise
+        """
         if self._Players_to_buy == []:
             return True
         else:
             return False
         
 class Phase2StartingRound(Phase2):
+    """The starting auction of the game with specific requirements, such as player must buy a powerstation
+
+    Args:
+        Phase2 (class): holds phase 2 logic
+    """
     def __init__(self,PS_Market:PS_Market,players:List[PlayerC],stage:int):
+        """Initialises phase 2 starting round
+
+        Args:
+            PS_Market (PS_Market): power station market for the game
+            players (List[PlayerC]): list of players in the game
+            stage (int): current stage of the game
+        """
         super().__init__(PS_Market,players,stage)
 
     def Receive_Resign(self,player:PlayerC) -> tuple[PlayerC|Literal[False],int,PowerStationC|Literal[False],bool]:
+        """Removes a player fmor a bidding round, if not in bidding round raises error 
+
+        Args:
+            player (PlayerC): player to resign
+
+        Raises:
+            Exception: raised if not in bidding round
+            Exception: raised if player tries to resign when not their turn
+
+        Returns:
+            tuple[PlayerC|Literal[False],int,PowerStationC|Literal[False],bool]: tuple containing the winner or False if no winner, winning bid, power station, and whether a discard is needed
+        """
         if self._In_BRound:
             self._BRound.Resign_from_bidding(player)
             if self._BRound.Bidding_Over():
@@ -1008,6 +1146,11 @@ class Phase2StartingRound(Phase2):
         raise Exception("Not in bidding round.")
     
     def Finish_Auction(self):
+        """Marks the end of Phase 2, completes phase 1 sorting as this is required in first round.
+
+        Returns:
+            bool: true if auction is finished, false otherwise
+        """
         if self._Players_to_buy:
             return False
         else:
@@ -1016,6 +1159,14 @@ class Phase2StartingRound(Phase2):
     
 class BiddingRound:
     def __init__(self,Station:PowerStationC,Players:List[PlayerC],StartingPLayer:PlayerC,starting_bid:int):
+        """Initialises a bidding round
+
+        Args:
+            Station (PowerStationC): power station being bid on
+            Players (List[PlayerC]): list of players participating in the bidding round
+            StartingPLayer (PlayerC): player who starts the bidding
+            starting_bid (int): starting bid for the power station
+        """
         self.__station = Station
         self.__players = Players
         self.__starting_player = StartingPLayer
@@ -1025,13 +1176,34 @@ class BiddingRound:
         self.__next_bidder_index = (self.__current_bidder_index +1) % len(self.__players_left)
     
     def Get_Next_Bidder(self) -> PlayerC:
+        """Give the next bidder in a bidding round
+
+        Returns:
+            PlayerC: the next bidder in the bidding round
+        """
         return self.__players_left[self.__next_bidder_index]
         
     
     def Get_Current_Bid(self) -> tuple[int,PowerStationC,PlayerC]:
+        """Get the current highest bid, the power station being bid on, and the current highest bidder
+
+        Returns:
+            tuple[int,PowerStationC,PlayerC]: current bid amount, power station, and player with the highest bid
+        """
         return (self.__current_bid, self.__station, self.__players_left[self.__current_bidder_index])
     
     def Place_Bid(self,player:PlayerC,bid:int) -> bool:
+        """Places a bid for the player specfied of amount specified, if player is next and bid amount is valid
+
+        Args:
+            player (PlayerC): player placing the bid
+            bid (int): amount of the bid
+
+        Raises:
+            Exception: raised if bid is invalid or not player's turn to bid
+        Returns:
+            bool: true if bid is successfully placed, false otherwise
+        """
         if player == self.Get_Next_Bidder() and bid > self.__current_bid and player.CheckEnoughElectros(bid):
             self.__current_bid = bid
             self.__current_bidder_index = self.__players_left.index(player)
@@ -1040,6 +1212,14 @@ class BiddingRound:
         raise Exception("Invalid bid or not this player's turn to bid.")
     
     def Resign_from_bidding(self,player:PlayerC):
+        """Removes a player from the bidding round if they are the next bidder
+
+        Args:
+            player (PlayerC): 
+
+        Raises:
+            Exception: _description_
+        """
         current_bidder = self.__players_left[self.__current_bidder_index]
         if player == self.Get_Next_Bidder():
             self.__players_left.remove(player)
@@ -1090,14 +1270,17 @@ class Phase3:
     
     def Buy_Resources(self,player:PlayerC,ResourceType:str,amount:int):
         if player == self.__Players_to_buy[0] and player.CheckEnoughElectros(self.Get_Resource_Costs()[ResourceType][amount-1]) and player.HasResourceSpace(ResourceType,amount):
+            
             cost = self.__Resource_Market.Buy_Resource(ResourceType,amount)
             player.BuyResource(cost,ResourceType,amount)
+            return True
         else:
-            raise Exception("Player cannot buy resources at this time.")
+            return False
         
-    def Player_Finished_Buying(self,player:PlayerC):
+    def Player_Finished_Buying(self,player:PlayerC) -> bool:
         if player == self.__Players_to_buy[0]:
             self.__Players_to_buy.remove(player)
+            return True
         else:
             raise Exception("It's not this player's turn to finish buying.")
 
@@ -1199,6 +1382,9 @@ class Phase5:
 
             # 2. Validate Resources
             if not self.Check_Player_has_resources_for_planned_powering(player, Stations_Powered_resources_Dict):
+                 print(Stations_Powered_resources_Dict)
+                 print(player.GetResources())
+                 print(player.GetElectros())
                  raise Exception("Player does not have enough resources for this plan.")
             plan_works = True
             total_cities_powered = 0

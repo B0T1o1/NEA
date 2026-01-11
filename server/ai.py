@@ -1,30 +1,34 @@
+from cv2 import phase
 from shared import MESSAGES
 import threading
-from typing import List
+from typing import List,Dict
 import random
 import ast
 import time
 import itertools
 import math
+import neat
+
 class AIPlayer:
     """AI player who makes random valid moves
     """
-    def __init__(self,name:str):
+    def __init__(self,name:str, run_speed:float=0.1):
         """Initialiases AI player
 
         Args:
             name (str): Name of Ai player
         """
         self._Name: str = name
-        self._latest_board_state: dict[str, dict] = {}
-        self._inventories: dict[str, dict[str, int]] = {}
-        self._electros:dict[str,int] = {}
-        self._PowerStation_Market: dict = {}
-        self._Resource_Market: dict = {}
+        self._latest_board_state: dict[str, dict] 
+        self._inventories: dict[str, tuple[dict[str,int],list[str]]]
+        self._electros:dict[str,int] 
+        self._PowerStation_Market: dict 
+        self._Resource_Market: dict 
         self._Receive_Message_Queue:List[tuple[str]] = []
         self._Send_Message_Queue:List[tuple[str]] = []
         self._lock = threading.Lock()
         self.Kill = False
+        self._run_speed = run_speed  # Time to sleep between processing loops
 
 
 
@@ -48,7 +52,7 @@ class AIPlayer:
             message_dict = ast.literal_eval(decoded_data)
             
             messageType = MESSAGES.Message.parse_payload(message_dict)
-            print(f"AI {self._Name} received message of type: {messageType}")
+            #print(f"AI {self._Name} received message of type: {messageType}")
             # Logic to handle board state updates immediately
             if messageType == 'BoardDisplay':
                 board_state, powerstation_market_str, resource_market, electros, player_resources_stations_dict = MESSAGES.BoardDisplay.parse_payload(message_dict)
@@ -84,7 +88,7 @@ class AIPlayer:
                 # Pass the DICT to process message, not the string
                 self._Process_Message(message_to_process) 
             else:
-                time.sleep(0.1)
+                time.sleep(self._run_speed)
     
     def GetNextMessage(self):
         """Gives the oldest message to the server for proccessing
@@ -360,21 +364,23 @@ def str_to_station_dict(station_string: str) -> dict:
 
     
 class HardAIPlayer(AIPlayer):
-    def __init__(self,name:str):
-        super().__init__(name)
+    def __init__(self,name:str, run_speed:float=0.1):
+        super().__init__(name, run_speed)
         self._PowerStations_to_Buy_resources_for = []
         self._index_of_next_station_to_buy_resources_for = 0
         self._Hybrid_fuel_left_over_dict = {}  # Tracks leftover fuel from hybrids for resource buying phase
+        self._PowerPlan = {}
+        self._Number_of_cities_supported_in_power_plan = 0
+        
     
     def _DiscardStationDecision(self, power_stations:List[str]):
         # Discards the station that powers the least cities, breaking ties by lowest value
         lowest_powering_station = str_to_station_dict(power_stations[0])
-        for station in power_stations[1:]:
-            station_data = str_to_station_dict(station)
-            if lowest_powering_station.get('CitiesPowered') >= station_data.get('CitiesPowered'):
-                if lowest_powering_station.get('Value') > station_data.get('Value'):
-                    lowest_powering_station = station_data
-        return lowest_powering_station.get('Value')
+        station_tuples = [ (station_data.get('Value'), station_data.get('CitiesPowered',0),self._Get_cost_to_fuel(station_data)) for station_data in [str_to_station_dict(station) for station in power_stations]]
+        loser_pair_1 = station_tuples[0]
+        winner_pair_2,loser_pair_2 = self._which_station(station_tuples[1],station_tuples[2])
+        middle,worst_station = self._which_station(loser_pair_1,loser_pair_2)
+        return  worst_station[0] # Start with worst station so station we want to buy has to be better than it
 
     def _BuyStationDecision(self, valid:List[int], electros:int,market):
         # Buy the station that powers the most cities, or any station with suffcient power to win, breaking ties by lowest cost of fuel and then lowest value.
@@ -385,68 +391,35 @@ class HardAIPlayer(AIPlayer):
         Required_power = winCondition.get(N_of_Players,15)
 
         owned_power_stations = self._inventories.get(self._Name)[1]
+        station_tuples = []
         for station in owned_power_stations:
             station_data = str_to_station_dict(station)
             Required_power -= station_data.get('CitiesPowered',0)
+            station_tuples.append( (station_data.get('Value'), station_data.get('CitiesPowered'),self._Get_cost_to_fuel(station_data)) )
         if Required_power <=0:
             return False  # Don't buy any more stations if we can already power enough cities to win
-
+        #find worst station owned
+        if len(station_tuples) == 3:
+            loser_pair_1 = station_tuples[0]
+            winner_pair_2,loser_pair_2 = self._which_station(station_tuples[1],station_tuples[2])
+            middle,worst_station = self._which_station(loser_pair_1,loser_pair_2)
+            best_station = worst_station # Start with worst station so station we want to buy has to be better than it
+            
+        else:  
+            worst_station = (0,0,float('inf'))  # (Value, CitiesPowered, FuelCost)
+            best_station = (0,0,float('inf'))  # (Value, CitiesPowered, FuelCost)
         can_reach_required = False
         affordable_stations = []
         for station_value in valid:
             if station_value <= electros:
                 affordable_stations.append(station_value)
-        best_station = (0,0,float('inf'))  # (Value, CitiesPowered, FuelCost)
-        power_stations = self._PowerStation_Market[0]
 
+        power_stations = self._PowerStation_Market[0]
         for power_station in power_stations:
             station_data = str_to_station_dict(power_station)
             if station_data.get('Value') not in affordable_stations:
                 continue
-            fuel_type = station_data.get('FuelType')
-            fuel_amount = station_data.get('FuelAmount')
-
-            # Calculate fuel cost
-            if fuel_type == 'H':
-                used_dict = {'C':0,'O':0}
-                cost_of_oil = 0
-                cost_of_coal = 0
-                for fuel_required in range(fuel_amount):
-                    if len(self._Resource_Market['O']) <= used_dict['O'] and len(self._Resource_Market['C']) <= used_dict['C']:
-                        # No more resources available
-                        cost_of_oil += float('inf')
-                        cost_of_coal += float('inf')
-                    if len(self._Resource_Market['O']) <= used_dict['O'] and len(self._Resource_Market['C']) > used_dict['C']:
-                        coal = self._Resource_Market['C'][used_dict['C']]
-                        used_dict['C'] += 1
-                        cost_of_coal += coal
-                        continue
-                    if len(self._Resource_Market['C']) <= used_dict['C'] and len(self._Resource_Market['O']) > used_dict['O']:
-                        oil = self._Resource_Market['O'][used_dict['O']]
-                        used_dict['O'] += 1
-                        cost_of_oil += oil
-                        continue
-                    else:
-                        oil = self._Resource_Market['O'][used_dict['O']]
-                        coal = self._Resource_Market['C'][used_dict['C']]
-                        if oil < coal:
-                            used_dict['O'] += 1
-                            cost_of_oil = oil
-                        else:
-                            used_dict['C'] += 1
-                            cost_of_coal = coal
-
-                cost = cost_of_coal + cost_of_oil
-            elif fuel_type == 'R':
-                cost = 0
-            else:
-
-                if len(self._Resource_Market[fuel_type]) < fuel_amount:
-                    cost = float('inf')  # Not enough resources available
-                else:
-                    cost = self._Resource_Market[fuel_type][fuel_amount - 1]
-
-
+            cost = self._Get_cost_to_fuel(station_data)
             station = (station_data.get('Value'), station_data.get('CitiesPowered'), cost)
             if station[1] >= Required_power:
                 can_reach_required = True
@@ -464,88 +437,109 @@ class HardAIPlayer(AIPlayer):
                 elif station[2] == best_station[2]:
                     if station[0] < best_station[0]:
                         best_station = station
-        if best_station[0] == 0:
+        if  best_station[0] == worst_station[0]:
             return False  # No station to buy
         return best_station[0]
+    
+    def _Get_cost_to_fuel(self,powerstation:dict) -> int:
+        fuel_type = powerstation.get('FuelType')
+        fuel_amount = powerstation.get('FuelAmount')
+
+        # Calculate fuel cost
+        if fuel_type == 'H':
+            used_dict = {'C':0,'O':0}
+            cost_of_oil = 0
+            cost_of_coal = 0
+            for fuel_required in range(fuel_amount):
+                if len(self._Resource_Market['O']) <= used_dict['O'] and len(self._Resource_Market['C']) <= used_dict['C']:
+                    # No more resources available
+                    cost_of_oil += float('inf')
+                    cost_of_coal += float('inf')
+                if len(self._Resource_Market['O']) <= used_dict['O'] and len(self._Resource_Market['C']) > used_dict['C']:
+                    coal = self._Resource_Market['C'][used_dict['C']]
+                    used_dict['C'] += 1
+                    cost_of_coal += coal
+                    continue
+                if len(self._Resource_Market['C']) <= used_dict['C'] and len(self._Resource_Market['O']) > used_dict['O']:
+                    oil = self._Resource_Market['O'][used_dict['O']]
+                    used_dict['O'] += 1
+                    cost_of_oil += oil
+                    continue
+                else:
+                    oil = self._Resource_Market['O'][used_dict['O']]
+                    coal = self._Resource_Market['C'][used_dict['C']]
+                    if oil < coal:
+                        used_dict['O'] += 1
+                        cost_of_oil = oil
+                    else:
+                        used_dict['C'] += 1
+                        cost_of_coal = coal
+
+            cost = cost_of_coal + cost_of_oil
+        elif fuel_type == 'R':
+            cost = 0
+        else:
+
+            if len(self._Resource_Market[fuel_type]) < fuel_amount:
+                cost = float('inf')  # Not enough resources available
+            else:
+                cost = self._Resource_Market[fuel_type][fuel_amount - 1]
 
 
+        return cost
 
+    def _which_station(self,station1,station2):
+        if station1[1] > station2[1]:
+            return station1,station2
+        elif station1[1] == station2[1]:
+            if station1[2] < station2[2]:
+                return station1,station2
+            elif station1[2] == station2[2]:
+                if station1[0] < station2[0]:
+                    return station1,station2
+        return station2,station1
+    
     def _Choose_Stations_to_power(self, electros: int, number_of_cities: int, power_stations: List[str], resources: dict):
-        available_stations = [str_to_station_dict(ps) for ps in power_stations]
+        real_power_plan: dict[int, dict[str, int]] = {}
+        sorted_stations = sorted(power_stations, key=lambda x: -str_to_station_dict(x).get('CitiesPowered', 0))
+        resource_check = {'C':0,'O':0,'G':0,'N':0}
+        plan_works = True
+        for station_val,resource_powering in self._PowerPlan.items():
+            for r_type, r_amt in resource_powering.items():
+                resource_check[r_type] += r_amt
+
+        for r_type, r_amt in resource_check.items():
+            if resources.get(r_type,0) < r_amt:
+                plan_works = False
+        if plan_works:
+            return self._PowerPlan
         
-        best_config = None
-        max_cities_powered = -1
-        min_cost = float('inf')
 
-        # 1. Iterate through every possible subset of stations
-        for r in range(len(available_stations) + 1):
-            for station_combo in itertools.combinations(available_stations, r):
-                
-                # Identify which stations in this combo are hybrid ('H')
-                hybrids = [s for s in station_combo if s.get("FuelType") == 'H']
-                non_hybrids = [s for s in station_combo if s.get("FuelType") != 'H']
-                
-                # 2. Iterate through every combination of Coal ('C') or Oil ('O') for the hybrids
-                # itertools.product generates all combinations like (C, C), (C, O), (O, C), (O, O)
-                for hybrid_fuel_choices in itertools.product(['C', 'O'], repeat=len(hybrids)):
+        for station in sorted_stations:
+            data = str_to_station_dict(station)
+            f_type = data['FuelType']
+            f_amt = data['FuelAmount']
+            val = data['Value']
+            
+            if f_type == 'R':
+                real_power_plan[val] = {} # Free power
+            elif f_type == 'H':
+                # Check resources
+                if resources.get('C', 0) >= f_amt:
+                    resources['C'] -= f_amt
+                    real_power_plan[val] = {'C': f_amt}
+                elif resources.get('O', 0) >= f_amt:
+                    resources['O'] -= f_amt
+                    real_power_plan[val] = {'O': f_amt}
+            elif f_type in resources:
+                if resources[f_type] >= f_amt:
+                    resources[f_type] -= f_amt
+                    real_power_plan[val] = {f_type: f_amt}
                     
-                    temp_resources = resources.copy()
-                    current_combo_cost = 0
-                    possible_to_fuel = True
-                    used_resources_mapping = {}
-                    total_capacity = 0
+        return real_power_plan
+        
 
-                    # Process Non-Hybrids first
-                    for s in non_hybrids:
-                        f_type = s.get("FuelType")
-                        f_amount = s.get("FuelAmount", 0)
-                        val = s.get("Value")
-                        
-                        if f_type == 'R': # Renewable
-                            used_resources_mapping[val] = {}
-                            total_capacity += s.get("CitiesPowered", 0)
-                        else:
-                            if temp_resources.get(f_type, 0) >= f_amount:
-                                current_combo_cost += self._Resource_Market[f_type][f_amount-1]
-                                temp_resources[f_type] -= f_amount
-                                used_resources_mapping[val] = {f_type: f_amount}
-                                total_capacity += s.get("CitiesPowered", 0)
-                            else:
-                                possible_to_fuel = False
-                                break
-                    
-                    if not possible_to_fuel: continue
 
-                    # Process Hybrids based on the current product iteration
-                    for i, s in enumerate(hybrids):
-                        chosen_fuel = hybrid_fuel_choices[i]
-                        f_amount = s.get("FuelAmount", 0)
-                        val = s.get("Value")
-
-                        if temp_resources.get(chosen_fuel, 0) >= f_amount:
-                            current_combo_cost += self._Resource_Market[chosen_fuel][f_amount-1]
-                            temp_resources[chosen_fuel] -= f_amount
-                            used_resources_mapping[val] = {chosen_fuel: f_amount}
-                            total_capacity += s.get("CitiesPowered", 0)
-                        else:
-                            possible_to_fuel = False
-                            break
-                    
-                    # 3. Decision Logic: Maximize Cities (capped) > Minimize Cost
-                    if possible_to_fuel:
-                        effective_capacity = min(total_capacity, number_of_cities)
-                        
-                        if effective_capacity > max_cities_powered:
-                            max_cities_powered = effective_capacity
-                            min_cost = current_combo_cost
-                            best_config = used_resources_mapping
-                        
-                        elif effective_capacity == max_cities_powered:
-                            if current_combo_cost < min_cost:
-                                min_cost = current_combo_cost
-                                best_config = used_resources_mapping
-
-        return best_config if best_config is not None else {}
     
     def _StartingCityPurchase(self):
         # city_score is average connection cost divided by number of connections (cheaper and more connections is better)
@@ -570,22 +564,18 @@ class HardAIPlayer(AIPlayer):
         return best_city_id
     
     def _BuyCityDecision(self,city_costs:dict, electros:int):
-        # Buy the cheapest affordable city if we can power it this turn
-        powerable = 0
-        for station in self._inventories.get(self._Name)[1]:
-            station_data = str_to_station_dict(station)
-            powerable += station_data.get('CitiesPowered',0)
-        if powerable < len(self._inventories.get(self._Name)[0]) + 1:
-            return 'FINISH'  # Can't power more cities this turn
+
         
-        affordable_cities = []
+        cheapest_city = 'FINISH'
+        cheapest_cost = float('inf')
         for city_id, cost in city_costs.items():
             if cost == 'inf':
                 continue
-            if int(cost) <= electros:
-                affordable_cities.append(city_id)
-        if len(affordable_cities) > 0:
-            return sorted(affordable_cities)[0] # Buy the cheapest city
+            if int(cost) <= cheapest_cost:
+                cheapest_cost = int(cost)
+                cheapest_city = city_id
+        if cheapest_city != 'FINISH' and cheapest_cost <= electros:
+            return cheapest_city # Buy the cheapest city
         return 'FINISH'  # Indicate no purchase if no affordable cities
     
     def _StartingStationPurchase(self,valid_values:List[int]):
@@ -677,8 +667,20 @@ class HardAIPlayer(AIPlayer):
         return False  # Otherwise pass
     
     def _BuyResourcesDecision(self, resource_costs: dict, power_stations: List[str], resource_space: dict):
+        
         if self._index_of_next_station_to_buy_resources_for == 0:
             self._PowerStations_to_Buy_resources_for = power_stations.copy()
+            self._PowerPlan = {}
+            self._Hybrid_fuel_left_over_dict = {}
+            self._Number_of_cities_supported_in_power_plan = 0
+            #sort stations by CitiesPowered descending, then by Value descending
+            def station_sort_key(station_str):
+                station_data = str_to_station_dict(station_str)
+                return (-station_data.get('CitiesPowered', 0), -station_data.get('Value', float('inf')))
+            self._PowerStations_to_Buy_resources_for.sort(key=station_sort_key)
+        if self._electros.get(self._Name, 0) == 0:
+            self._index_of_next_station_to_buy_resources_for = 0
+            return {'X': 0}  # No electros to buy resources
         while self._index_of_next_station_to_buy_resources_for != len(self._PowerStations_to_Buy_resources_for):
             station_to_buy_for = self._PowerStations_to_Buy_resources_for[self._index_of_next_station_to_buy_resources_for]
             station_data = str_to_station_dict(station_to_buy_for)
@@ -688,11 +690,6 @@ class HardAIPlayer(AIPlayer):
             if fuel_type == 'H':
                 if self._Hybrid_fuel_left_over_dict.get(station_to_buy_for):
                     self._index_of_next_station_to_buy_resources_for += 1
-                    if resource_space.get('C', 0) < fuel_amount:
-                        # Not enough space, skip it
-                        self._Hybrid_fuel_left_over_dict = {}
-                        self._index_of_next_station_to_buy_resources_for += 1
-                        continue
                     return self._Hybrid_fuel_left_over_dict
                 else:
 
@@ -707,12 +704,12 @@ class HardAIPlayer(AIPlayer):
                         if len(self._Resource_Market['O']) <= used_dict['O'] and len(self._Resource_Market['C']) > used_dict['C']:
                             coal = self._Resource_Market['C'][used_dict['C']]
                             used_dict['C'] += 1
-                            cost_of_coal += coal
+                            cost_of_coal = coal
                             continue
                         if len(self._Resource_Market['C']) <= used_dict['C'] and len(self._Resource_Market['O']) > used_dict['O']:
                             oil = self._Resource_Market['O'][used_dict['O']]
                             used_dict['O'] += 1
-                            cost_of_oil += oil
+                            cost_of_oil = oil
                             continue
                         else:
                             oil = self._Resource_Market['O'][used_dict['O']]
@@ -725,12 +722,28 @@ class HardAIPlayer(AIPlayer):
                                 cost_of_coal = coal
                     if used_dict['O'] !=0:
                         if used_dict['C'] !=0:
-                            self._Hybrid_fuel_left_over_dict = {'C': used_dict['C']}
-                        if resource_space.get('O', 0) < fuel_amount or resource_space.get('C', 0) < fuel_amount or self._electros.get(self._Name, 0) < (cost_of_oil + cost_of_coal):
+                                
+                            if (resource_space.get('O', 0) < fuel_amount) or (resource_space.get('C', 0) < fuel_amount) or (self._electros.get(self._Name, 0) < (cost_of_oil + cost_of_coal)):
+                                # Not enough space, skip it
+                                self._index_of_next_station_to_buy_resources_for += 1
+                                continue
+                            if self._electros.get(self._Name, 0) >= (cost_of_oil + cost_of_coal):
+
+                                self._Hybrid_fuel_left_over_dict[station_to_buy_for] = {'C': used_dict['C']}
+                                self._PowerPlan[station_data.get('Value')] = {'O': used_dict['O'], 'C': used_dict['C']}
+                                self._Number_of_cities_supported_in_power_plan += station_data.get('CitiesPowered',0)
+                                return {'O': used_dict['O']}
+                            else:
+                                self._index_of_next_station_to_buy_resources_for += 1
+                                continue
+                    else:
+                        if resource_space.get('C', 0) < fuel_amount or self._electros.get(self._Name, 0) < cost_of_coal:
                             # Not enough space, skip it
                             self._index_of_next_station_to_buy_resources_for += 1
                             continue
-                        return {'O': used_dict['O']}
+                        self._PowerPlan[station_data.get('Value')] = {'C': used_dict['C']}
+                        self._Number_of_cities_supported_in_power_plan += station_data.get('CitiesPowered',0)
+                        return {'C': used_dict['C']}
             if fuel_type == 'R':
                 self._index_of_next_station_to_buy_resources_for += 1  # No resources needed for renewable
                 continue
@@ -742,18 +755,413 @@ class HardAIPlayer(AIPlayer):
                 # Can't afford to buy resources for this station, skip it
                 self._index_of_next_station_to_buy_resources_for += 1
                 continue
+
             cost_index = fuel_amount - 1
             cost = costs_list[cost_index]
             current_electros = self._electros.get(self._Name, 0)
-            if current_electros < cost:
+            if int(current_electros) < int(cost):
                 # Can't afford, skip it
                 self._index_of_next_station_to_buy_resources_for += 1
                 continue
-            self._index_of_next_station_to_buy_resources_for += 1
 
             if resource_space.get(search_key, 0) < fuel_amount:
                 # Not enough space, skip it
+                self._index_of_next_station_to_buy_resources_for += 1
                 continue
+
+            self._index_of_next_station_to_buy_resources_for += 1
+
+            self._PowerPlan[station_data.get('Value')] = {search_key: fuel_amount}
+            self._Number_of_cities_supported_in_power_plan += station_data.get('CitiesPowered',0)
             return {search_key: fuel_amount}
+        
         self._index_of_next_station_to_buy_resources_for = 0
         return {'X': 0}  # No stations to buy resources for
+
+# --- helpers ---
+
+def clamp(x: float, lo: float, hi: float) -> float:
+    return lo if x < lo else hi if x > hi else x
+
+def sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-x))
+
+def argmax(xs: List[float]) -> int:
+    best_i = 0
+    best_v = xs[0]
+    for i, v in enumerate(xs):
+        if v > best_v:
+            best_v = v
+            best_i = i
+    return best_i
+
+def safe_int(x, default=0) -> int:
+    try:
+        return int(x)
+    except Exception:
+        return default
+
+# --- your existing str_to_station_dict must NOT raise on missing keys during play ---
+# Your current version raises ValueError for missing keys; that can crash training.
+# Use this safer version during NEAT runs:
+def str_to_station_dict_safe(station_string: str) -> dict:
+    data = {"Value": 0, "FuelType": "", "FuelAmount": 0, "CitiesPowered": 0}
+    if not station_string:
+        return data
+    parts = station_string.split(", ")
+    for part in parts:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        if key == "Value":
+            data[key] = safe_int(value, 0)
+        elif key == "FuelType":
+            data[key] = value.split(" ")[0].strip()
+        elif key == "FuelAmount":
+            data[key] = safe_int(value, 0)
+        elif key == "CitiesPowered":
+            data[key] = safe_int(value, 0)
+    return data
+
+
+class NeatAIPlayer(AIPlayer):
+    """
+    NEAT-controlled version of AIPlayer.
+    Keeps your networking/message loop unchanged; only decisions are driven by the NN.
+    """
+    def __init__(self, name: str, genome, config, run_speed: float = 0.1):
+        super().__init__(name, run_speed)
+        self.genome = genome
+        self.config = config
+        self.net = neat.nn.FeedForwardNetwork.create(genome, config)
+        self._Resource_buying_index = 0  # for tracking multi-step resource buying
+        # optional: tracking for fitness shaping
+        self.fitness = 0.0
+
+    # -------------------------
+    # Input building (99 floats)
+    # -------------------------
+    def _encode_fuel_type_1hot(self, fuel_type: str) -> List[float]:
+        # C,O,G,N,H,R
+        mapping = {"C": 0, "O": 1, "G": 2, "N": 3, "H": 4, "R": 5}
+        v = [0.0] * 6
+        idx = mapping.get(fuel_type, None)
+        if idx is not None:
+            v[idx] = 1.0
+        return v
+
+    def _normalize_station(self, value: float, fuel_amt: float, cities: float) -> List[float]:
+        # Scales to roughly [0..1] ranges so sigmoid nets behave better.
+        # You can tune these caps.
+        return [
+            clamp(value / 50.0, 0.0, 1.0),
+            clamp(fuel_amt / 5.0, 0.0, 1.0),
+            clamp(cities / 6.0, 0.0, 1.0),
+        ]
+
+    def _get_network_inputs(self, current_phase: int) -> List[float]:
+        """
+        Builds EXACTLY 99 floats.
+        If anything is missing (early game / markets not loaded yet), pads with zeros.
+        """
+        inputs: List[float] = []
+
+        # --- 1) Powerstation market snapshot ---
+        # Your code assumes self._PowerStation_Market = {0:[...], 1:[...]}.
+        lower = (self._PowerStation_Market or {}).get(0, []) if hasattr(self, "_PowerStation_Market") else []
+        upper = (self._PowerStation_Market or {}).get(1, []) if hasattr(self, "_PowerStation_Market") else []
+
+        # take up to 4 from lower + up to 2 from upper = 6 stations total (common power grid style)
+        market_stations = list(lower[:4]) + list(upper[:2])
+
+        # each station: (value,fuelamt,cities) + 6 fuel one-hot = 3+6=9
+        # 6 stations -> 54 floats
+        for i in range(6):
+            if i < len(market_stations):
+                sd = str_to_station_dict_safe(market_stations[i])
+                inputs.extend(self._normalize_station(sd["Value"], sd["FuelAmount"], sd["CitiesPowered"]))
+                inputs.extend(self._encode_fuel_type_1hot(sd["FuelType"]))
+            else:
+                inputs.extend([0.0, 0.0, 0.0])
+                inputs.extend([0.0] * 6)
+
+        # --- 2) Resource market counts (4) ---
+        rm = self._Resource_Market if hasattr(self, "_Resource_Market") else {}
+        inputs.extend([
+            clamp(len(rm.get("C", [])) / 24.0, 0.0, 1.0),
+            clamp(len(rm.get("O", [])) / 24.0, 0.0, 1.0),
+            clamp(len(rm.get("G", [])) / 24.0, 0.0, 1.0),
+            clamp(len(rm.get("N", [])) / 24.0, 0.0, 1.0),
+        ])  # +4 => 58
+
+        # --- 3) My electros (1) ---
+        electros = (self._electros or {}).get(self._Name, 0) if hasattr(self, "_electros") else 0
+        inputs.append(clamp(electros / 200.0, 0.0, 1.0))  # +1 => 59
+
+        # --- 4) My cities count (1) ---
+        cities_owned = 0
+        if hasattr(self, "_latest_board_state") and self._latest_board_state:
+            cities = self._latest_board_state.get("cities", {}).values()
+            for c in cities:
+                owners = c.get("owners", [])
+                if self._Name in owners:
+                    cities_owned += 1
+        inputs.append(clamp(cities_owned / 20.0, 0.0, 1.0))  # +1 => 60
+
+        # --- 5) My owned stations (up to 3) => 3 * 9 = 27 ---
+        inv = self._inventories.get(self._Name, [{}, []]) if hasattr(self, "_inventories") else [{}, []]
+        owned_stations = inv[1] if len(inv) > 1 else []
+        for i in range(3):
+            if i < len(owned_stations):
+                sd = str_to_station_dict_safe(owned_stations[i])
+                inputs.extend(self._normalize_station(sd["Value"], sd["FuelAmount"], sd["CitiesPowered"]))
+                inputs.extend(self._encode_fuel_type_1hot(sd["FuelType"]))
+            else:
+                inputs.extend([0.0, 0.0, 0.0])
+                inputs.extend([0.0] * 6)
+        # +27 => 87
+
+        # --- 6) My owned resources (4) ---
+        owned_res = inv[0] if len(inv) > 0 and isinstance(inv[0], dict) else {}
+        inputs.extend([
+            clamp(owned_res.get("C", 0) / 24.0, 0.0, 1.0),
+            clamp(owned_res.get("O", 0) / 24.0, 0.0, 1.0),
+            clamp(owned_res.get("G", 0) / 24.0, 0.0, 1.0),
+            clamp(owned_res.get("N", 0) / 24.0, 0.0, 1.0),
+        ])  # +4 => 91
+
+        # --- 7) Cheapest 5 available city costs (5) ---
+        costs = []
+        if hasattr(self, "_latest_board_state") and self._latest_board_state:
+            for city_id, c in self._latest_board_state.get("cities", {}).items():
+                if bool(c.get("Available")):
+                    # if your city dict uses different cost field, change here
+                    cost = c.get("Cost", 0)
+                    if cost == "inf":
+                        continue
+                    costs.append(safe_int(cost, 0))
+        costs.sort()
+        while len(costs) < 5:
+            costs.append(0)
+        for i in range(5):
+            inputs.append(clamp(costs[i] / 100.0, 0.0, 1.0))  # +5 => 96
+
+        # --- 8) Number of players (1) ---
+        n_players = len(self._inventories) if hasattr(self, "_inventories") and self._inventories else 0
+        inputs.append(clamp(n_players / 6.0, 0.0, 1.0))  # +1 => 97
+
+        # --- 9) Win condition (1) ---
+        win_conditions = {3: 17, 4: 17, 5: 15, 6: 14}
+        win = win_conditions.get(n_players, 15)
+        inputs.append(clamp(win / 20.0, 0.0, 1.0))  # +1 => 98
+
+        # --- 10) Phase (1) ---
+        inputs.append(clamp(current_phase / 5.0, 0.0, 1.0))  # +1 => 99
+
+        # Ensure exact length
+        if len(inputs) != 99:
+            # Hard guarantee: pad or trim if your upstream fields differ slightly.
+            if len(inputs) < 99:
+                inputs.extend([0.0] * (99 - len(inputs)))
+            else:
+                inputs = inputs[:99]
+        return inputs
+
+    # -------------------------
+    # Output decoding (14 -> actions)
+    # -------------------------
+    def _activate(self, phase: int) -> List[float]:
+        ins = self._get_network_inputs(phase)
+        outs = self.net.activate(ins)
+        # neat-python returns list[float] length 14
+        if len(outs) != 14:
+            # defensive: pad/trim
+            outs = list(outs)[:14]
+            while len(outs) < 14:
+                outs.append(0.0)
+        return outs
+
+    def _combined_market_values(self) -> List[int]:
+        lower = (self._PowerStation_Market or {}).get(0, []) if hasattr(self, "_PowerStation_Market") else []
+        upper = (self._PowerStation_Market or {}).get(1, []) if hasattr(self, "_PowerStation_Market") else []
+        if len(lower) == 4:
+            stations = list(lower[:4]) + list(upper[:2])  
+        else:
+            stations = list(lower)
+        values = []
+        for s in stations:
+            values.append(str_to_station_dict_safe(s)["Value"])
+        return values
+
+    # -------------------------
+    # Decisions overridden
+    # -------------------------
+
+    def _StartingCityPurchase(self) -> str:
+        # Use NN preference via "cheapest cities" implicitly; simplest: pick cheapest available.
+        # (Starting city is critical; you can later evolve this by adding city features to inputs.)
+        available = []
+        for city_id, c in self._latest_board_state.get("cities", {}).items():
+            if bool(c.get("Available")):
+                available.append((safe_int(c.get("Cost", 0), 0), city_id))
+        if not available:
+            return super()._StartingCityPurchase()
+        available.sort()
+        return available[0][1]
+
+    def _StartingStationPurchase(self, valid_values: List[int]) -> int:
+        outs = self._activate(phase=1)
+        prefs = outs[0:4]
+        chosen_idx = argmax(prefs)
+        market_vals = self._combined_market_values()[0:4]
+
+        # Map idx -> station value
+        while True:
+            if market_vals[chosen_idx] in valid_values and self._electros.get(self._Name, 0) >= market_vals[chosen_idx]:
+                return market_vals[chosen_idx]
+            else:
+                prefs[chosen_idx] = -float("inf")
+                chosen_idx = argmax(prefs)
+
+
+    def _BidOnPowerStation(self, min_bid: int, electros: int, powerstation: str, held_by_player: str):
+        outs = self._activate(phase=2)
+        if len(self._PowerStation_Market[0]) == 4:
+            prefs = outs[0:5]
+        else:
+            prefs = outs[0:6]
+        most_preferred_idx = argmax(prefs)
+        market_vals = self._combined_market_values()
+        target_val = str_to_station_dict_safe(powerstation)["Value"]
+
+        # If not found, fall back to a cautious pass.
+        want = False
+        if target_val == market_vals[most_preferred_idx]:
+            want = True
+
+        if not want or electros < min_bid:
+            return False
+
+        if want:
+            # Bid min to try and win
+            if target_val * prefs[most_preferred_idx] >= min_bid:
+                return min_bid
+        return False
+
+    def _BuyStationDecision(self, valid: List[int], electros: int, market) -> int | bool:
+        outs = self._activate(phase=2)
+        if len(self._PowerStation_Market[0]) == 4:
+            prefs = outs[0:4]
+        else:
+            prefs = outs[0:6]
+        chosen_idx = argmax(prefs)
+        market_vals = self._combined_market_values()
+
+        # pick the most preferred station that is valid & affordable
+        while True:
+            v = market_vals[chosen_idx]
+            if v in valid and v <= electros:
+                return v
+            else:
+                prefs[chosen_idx] = -float("inf")
+                chosen_idx = argmax(prefs)
+            # if all prefs exhausted, break
+            if all(p == -float("inf") for p in prefs):
+                return False
+
+
+    def _BuyResourcesDecision(self, resource_costs: dict, power_stations: List[str], resource_space: dict):
+        outs = self._activate(phase=3)
+        
+        if self._Resource_buying_index >= 4:
+            self._Resource_buying_index = 0
+            return {'X': 0}  # Finished buying resources
+        desired = [
+            {"C":max(0, min(resource_space.get("C", 0), int(round((outs[7]) * resource_space.get("C", 0)))))},
+            {"O": max(0, min(resource_space.get("O", 0), int(round((outs[8]) * resource_space.get("O", 0)))))},
+            {"G": max(0, min(resource_space.get("G", 0), int(round((outs[9]) * resource_space.get("G", 0)))))},
+            {"N": max(0, min(resource_space.get("N", 0), int(round((outs[10]) * resource_space.get("N", 0)))))},
+        ]
+
+        current_electros = self._electros.get(self._Name, 0)
+        for fuel, amount in desired[self._Resource_buying_index].items():
+            if self._Resource_Market.get(fuel):
+                costs_list = resource_costs.get(fuel, [])
+                if len(costs_list) >= amount:
+                    cost = costs_list[amount - 1]
+                    if int(current_electros) >= int(cost) and amount > 0:
+                        self._Resource_buying_index += 1
+                        
+                        return {fuel: amount}
+         
+
+    def _BuyCityDecision(self, city_costs: dict, electros: int):
+        outs = self._activate(phase=4)
+        buy_yes = sigmoid(outs[11]) > 0.5
+        if not buy_yes:
+            return "FINISH"
+
+        # Pick cheapest affordable city (simple + stable).
+        affordable = []
+        for city_id, cost in city_costs.items():
+            if cost == 'inf':
+                continue
+            
+            if int(cost) <= electros:
+                affordable.append((int(cost), city_id))
+        if not affordable:
+            return "FINISH"
+        affordable.sort()
+        return affordable[0][1]
+
+    def _Choose_Stations_to_power(self, electros: int, number_of_cities: int, power_stations: List[str], resources: dict) -> dict:
+        outs = self._activate(phase=5)
+
+        # outputs 12..14 correspond to up to 3 owned stations
+        flags = [sigmoid(outs[12]) > 0.5, sigmoid(outs[13]) > 0.5, sigmoid(outs[14]) > 0.5]
+
+        # build a plan: {station_value: {fuel_type: amt}}
+        plan: Dict[int, Dict[str, int]] = {}
+        res = dict(resources)  # copy so we can decrement safely
+        
+        # stable order: most cities powered first (good heuristic), NN decides which to try enabling
+        stations_sorted = sorted(power_stations, key=lambda s: -str_to_station_dict_safe(s)["CitiesPowered"])
+
+        picked = 0
+        for i, station_str in enumerate(stations_sorted):
+            if picked >= 3:
+                break
+            if i >= len(flags):
+                break
+            if not flags[i]:
+                continue
+
+            sd = str_to_station_dict_safe(station_str)
+            val = sd["Value"]
+            ftype = sd["FuelType"]
+            famt = sd["FuelAmount"]
+
+            if ftype == "R":
+                plan[val] = {}
+                picked += 1
+                continue
+
+            if ftype == "H":
+                # prefer coal if possible else oil
+                if res.get("C", 0) >= famt:
+                    res["C"] -= famt
+                    plan[val] = {"C": famt}
+                    picked += 1
+                elif res.get("O", 0) >= famt:
+                    res["O"] -= famt
+                    plan[val] = {"O": famt}
+                    picked += 1
+                continue
+
+            if res.get(ftype, 0) >= famt:
+                res[ftype] -= famt
+                plan[val] = {ftype: famt}
+                picked += 1
+
+        return plan
+

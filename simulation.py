@@ -45,10 +45,13 @@ class SimulationServer(Server):
         results = {
             "Standard AI": 0,
             "Hard AI": 0,
+            "Best AI": 0,
             "Draw/Error": 0
+
         }
-        try:
-            for i in range(number_of_games):
+        
+        for i in range(number_of_games):
+            #try:
                 print(f"[Sim] Starting Game {i + 1}...")
                 winner = self.play_single_match(game_id=i)
                 
@@ -64,15 +67,9 @@ class SimulationServer(Server):
                 else:
                     results["Draw/Error"] += 1
                     print("   -> Game terminated without clear winner.")
-        except Exception as e:
-            print(f"Simulation Error: {e}")
-            totals = sum(results.values())
-            print(f"Games Completed Before Error: {totals}/{number_of_games}")
-            print("="*30)
-            print(f"Total Games: {total}")
-            print(f"Standard AI Wins: {results['Standard AI']} ({results['Standard AI']/total*100:.1f}%)")
-            print(f"Hard AI Wins:     {results['Hard AI']} ({results['Hard AI']/total*100:.1f}%)")
-            print(f"Errors/Incomplete: {results['Draw/Error']}")
+            #except Exception as e:
+               # results["Draw/Error"] += 1
+                #print(f"   -> Error during Game {i + 1}: {e}")
 
         # --- Final Report ---
         total = number_of_games
@@ -93,19 +90,21 @@ class SimulationServer(Server):
         # 2. Create Players (2 Normal, 2 Hard)
         # We create exactly 4 players here to fix the "3-6 players" ValueError
         players = {}
-        players['AI_Std_1'] = AIPlayer('AI_Std_1')
-        players['AI_Std_2'] = AIPlayer('AI_Std_2')
-        players['AI_Hard_1'] = HardAIPlayer('AI_Hard_1')
-        players['AI_Hard_2'] = HardAIPlayer('AI_Hard_2')
+        players['AI_Std_1'] = AIPlayer('AI_Std_1', run_speed=0.001)
+        players['AI_Std_2'] = AIPlayer('AI_Std_2', run_speed=0.001)
+        players['AI_Std_3'] = AIPlayer('AI_Std_3', run_speed=0.001)
+        players['AI_Hard_1'] = HardAIPlayer('AI_Hard_1', run_speed=0.001)
+        players['AI_Hard_2'] = HardAIPlayer('AI_Hard_2', run_speed=0.001)
+        players['AI_Hard_3'] = HardAIPlayer('AI_Hard_3', run_speed=0.001)
 
         self.games[game_id] = players
 
         # 3. Initialize Game State
         self.game_states[game_id] = GameStateC()
         
-        # CRITICAL FIX: We explicitly tell the Logic there are 4 players
+        # CRITICAL FIX: We explicitly tell the Logic there are 6 players
         try:
-            self.game_states[game_id].Set_number_of_players(4)
+            self.game_states[game_id].Set_number_of_players(6)
             self.game_states[game_id].Set_settings()
             self.game_states[game_id].Set_player_names(list(players.keys()))
         except ValueError as e:
@@ -171,7 +170,7 @@ class SimulationServer(Server):
 # --- Main Execution ---
 if __name__ == '__main__':
     # Configuration
-    NUMBER_OF_GAMES = 100 # Change this to run more or fewer games
+    NUMBER_OF_GAMES = 10 # Change this to run more or fewer games
 
     sim_server = SimulationServer()
     sim_server.run_simulation(NUMBER_OF_GAMES)
