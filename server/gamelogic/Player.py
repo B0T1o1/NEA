@@ -137,11 +137,11 @@ class PlayerC:
         """
         return self.__Electros
     
-    def CheckEnoughElectros(self,Required:int) -> bool:
+    def CheckEnoughElectros(self,Required:int|float) -> bool:
         """Checks if the player has enough electros
 
         Args:
-            Required (int): the required amount of electros
+            Required (int|float): the required amount of electros
         Returns:
             bool: True if the player has enough electros, False otherwise
         """

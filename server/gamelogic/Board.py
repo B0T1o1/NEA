@@ -124,7 +124,7 @@ class BoardC:
 
 
         Returns:
-            _type_: _description_
+            dict: board information before the game starts
         """
         info = {
             "regions": self._regions.copy(),
@@ -144,7 +144,15 @@ class BoardC:
         
 
     def DisplayBoardInfo(self,playerstartingcity:str,playername:str)-> dict[str,list[str]|dict]:
-        # Return a JSON of the board to prevent external modification
+        """Returns a dictionary of the board to send over a network
+
+        Args:
+            playerstartingcity (str): The starting city of the player
+            playername (str):   Name of the player requesting the board info
+
+        Returns:
+            dict[str,list[str]|dict]: A dictionary representing the board information tailored for the requesting player.
+        """
         info = {
             "regions": self._regions.copy(),
             "city_Indexes": self.indexes_to_cities,
@@ -168,42 +176,96 @@ class BoardC:
 
 
 class City:
-    def __init__(self,CityId,CityIndex,Region):
+    """city class 
+    """
+    def __init__(self,CityId:str,CityIndex:int,Region:str):
+        """the city class intialiser
+
+        Args:
+            CityId (str): The unique identifier for the city.
+            CityIndex (int): The index of the city in the board's city list.
+            Region (str): The region to which the city belongs.
+        """
         self.__CityId = CityId
         self.__PlayersOwn = []
         self.__Stage = 1
         self.Region = Region
 
-    def PlayerBuyCity(self,PlayerName):
+    def PlayerBuyCity(self,PlayerName:str):
+        """Player buy city
+
+        Args:
+            PlayerName (str): The name of the player buying the city
+
+        Raises:
+            Exception: If the city is not available to the player.
+        """
         if self.CityIsAvailableToPlayer(PlayerName):
                 self.__PlayersOwn.append(PlayerName)  
         else:
-            pass # TODO create an error
+            raise Exception("City not available to player")
 
-    def GetCostInCity(self):
+    def GetCostInCity(self) -> int:
+        """Gives the cost to buy into this city
+
+        Returns:
+            int: The cost to buy into this city.
+        """
         return (len(self.__PlayersOwn)+2) * 5
         
-    def DoesPlayerOwnCity(self,PlayerName):
+    def DoesPlayerOwnCity(self,PlayerName: str) -> bool:
+        """Checks whether  player owns this city
+
+        Args:
+            PlayerName (str): the name of the player you would like to check
+
+        Returns:
+            bool: True if the player owns the city, False otherwise.
+        """
         if PlayerName in self.__PlayersOwn:
             return True
         else:
             return False
         
-    def GetPlayersInCity(self):
+    def GetPlayersInCity(self) -> list[str]:
+        """Gives the names of the players in the city
+
+        Returns:
+            list[str]: List of player names in the city
+        """
         return list(self.__PlayersOwn)
     
-    def CityIsAvailableToPlayer(self,PlayerName):
+    def CityIsAvailableToPlayer(self,PlayerName: str) -> bool:
+        """Checks if a player can buy into a city
+
+        Args:
+            PlayerName (str): The name of the player to check availability for
+
+        Returns:
+            bool: True if the city is available to the player, False otherwise.
+        """
         if len(self.__PlayersOwn) != self.__Stage and PlayerName not in self.__PlayersOwn:
             return True 
         else:
             return False
-    def CityIsAvailable(self):
+        
+    def CityIsAvailable(self) -> bool:
+        """Checks if a city is available
+
+        Returns:
+            bool: True if the city is available, False otherwise.
+        """
         if len(self.__PlayersOwn) != self.__Stage:
             return True
         else:
             return False
         
     def UpdateStage(self,stage:int):
+        """updates the city stage
+
+        Args:
+            stage (int): the stage to update the city to
+        """
         self.__Stage = stage
 
     

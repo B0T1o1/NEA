@@ -1229,38 +1229,87 @@ class BiddingRound:
             raise Exception("It's not this player's turn to resign from bidding.")
     
     def Bidding_Over(self) -> bool:
+        """Returns True if bidding is over otherwise false
+
+        Returns:
+            bool: True if bidding is over, False otherwise
+        """
         if len(self.__players_left) == 1:
             return True
         return False
     
     def Get_Winner(self) -> PlayerC:
+        """Gets the player class of the winning player if bidding is over=
+
+        Raises:
+            Exception: if bidding is not over yet
+
+        Returns:
+            PlayerC: the winning player
+        """
         if self.Bidding_Over():
             return self.__players_left[0]
         raise Exception("Bidding is not over yet.")
     
     def Get_Winning_Bid(self) -> int:
+        """Gives the winning bid
+
+        Raises:
+            Exception: if bidding is not over yet
+
+        Returns:
+            int: the winning bid
+        """
         if self.Bidding_Over():
             return self.__current_bid
         raise Exception("Bidding is not over yet.")
     
     def Get_Starting_Player(self) -> PlayerC:
+        """Gets the player who started the bidding round
+
+        Returns:
+            PlayerC: the starting player
+        """
         return self.__starting_player
     
     def GetStation(self) -> PowerStationC:
+        """Gives the station teh bidding round is on
+
+        Returns:
+            PowerStationC: the power station the bidding round is on
+        """
         return self.__station
     
 
 class Phase3:
+    """Holds pahse 3 logic
+    """
 
     def __init__(self,Resource_Market:R_Market,Players:List[PlayerC]):
+        """Initialises phase 3
+
+        Args:
+            Resource_Market (R_Market): the resource market for phase 3
+            Players (List[PlayerC]): the list of players in phase 3
+        """
         self.__Resource_Market = Resource_Market
         self.__Players = Players
         self.__Players_to_buy = list(Players)
 
     def Get_Players_to_buy(self) -> list[PlayerC]:
+        """Gives the players left to buy resources=
+
+        Returns:
+            list[PlayerC]: the players left to buy resources
+        """
         return self.__Players_to_buy
     
     def Get_Resource_Costs(self) -> dict[str, list[int]]:
+        """Gets the costs of resources in the market
+
+        Returns:
+            dict[str, list[int]]: the costs of resources in the market
+        """
         return {
             'C': self.__Resource_Market.GetCostOfCoal(),
             'O': self.__Resource_Market.GetCostOfOil(),
@@ -1268,7 +1317,17 @@ class Phase3:
             'N': self.__Resource_Market.GetCostOfNuclear()
         }
     
-    def Buy_Resources(self,player:PlayerC,ResourceType:str,amount:int):
+    def Buy_Resources(self,player:PlayerC,ResourceType:str,amount:int) -> bool:
+        """Allows a player to buy resources
+
+        Args:
+            player (PlayerC): the player buying resources
+            ResourceType (str): the type of resource to buy
+            amount (int): the amount of the resource to buy
+
+        Returns:
+            bool: True if the purchase was successful, False otherwise
+        """
         if player == self.__Players_to_buy[0] and player.CheckEnoughElectros(self.Get_Resource_Costs()[ResourceType][amount-1]) and player.HasResourceSpace(ResourceType,amount):
             
             cost = self.__Resource_Market.Buy_Resource(ResourceType,amount)
@@ -1278,6 +1337,17 @@ class Phase3:
             return False
         
     def Player_Finished_Buying(self,player:PlayerC) -> bool:
+        """Allows a player to stop buying resources
+
+        Args:
+            player (PlayerC): the player who has finished buying resources
+
+        Raises:
+            Exception: if it's not the player's turn to finish buying
+
+        Returns:
+            bool: True if the player successfully finished buying, False otherwise
+        """
         if player == self.__Players_to_buy[0]:
             self.__Players_to_buy.remove(player)
             return True
@@ -1285,21 +1355,44 @@ class Phase3:
             raise Exception("It's not this player's turn to finish buying.")
 
     def Finish_Resource_Buying(self) -> bool:
+        """Returns True if all players have finished buying resources
+
+        Returns:
+            bool: True if all players have finished buying resources, False otherwise
+        """
         if self.__Players_to_buy:
             return False
         return True
     
 
 class Phase4:
+    """holds phase 4 logic 
+    """
     def __init__(self,players:List[PlayerC],board:BoardC):
+        """Initialises phase 4
+
+        Args:
+            players (List[PlayerC]): the list of players in phase 4
+            board (BoardC): the game board
+        """
         self.__players = list(players)
         self.__players_to_buy = list(players)
         self.__board = board
 
     def Get_Players(self) -> List[PlayerC]:
+        """Gets the players left to buy cities in order
+
+        Returns:
+            List[PlayerC]: the players left to buy cities in order
+        """
         return self.__players_to_buy
     
-    def Get_Costs(self) -> dict[str,int]:
+    def Get_Costs(self) -> dict[str,int|float]:
+        """Gets the costs of cities for the current player to buy
+
+        Returns:
+            dict[str,int|float]: the costs of cities for the current player to buy
+        """
         player = self.__players_to_buy[0]
         costs = {}
         for city_id in self.__board.city_ids:
@@ -1311,7 +1404,18 @@ class Phase4:
                 costs[city_id] = math.inf
         return costs
     
-    def Player_Finished_Buying(self,player:PlayerC):
+    def Player_Finished_Buying(self,player:PlayerC) -> bool:
+        """Lets a player finish buying citie s
+
+        Args:
+            player (PlayerC): the player who has finished buying cities
+
+        Raises:
+            Exception: if it's not the player's turn to finish buying
+
+        Returns:
+            bool: True if the player successfully finished buying, False otherwise
+        """
         if player == self.__players_to_buy[0]:
             self.__players_to_buy.remove(player)
             return True
@@ -1319,6 +1423,14 @@ class Phase4:
             raise Exception("It's not this player's turn to finish buying.")
         
     def Player_Buy_City(self,city_id:str):
+        """Buys a city a player if they can
+
+        Args:
+            city_id (str): the ID of the city to buy
+
+        Returns:
+            bool: True if the city was successfully bought, False otherwise
+        """
         if city_id not in self.__board.city_ids:
             return False
         player = self.__players_to_buy[0]
@@ -1327,11 +1439,16 @@ class Phase4:
             cost += self.__board.cityIds_to_CityClass[city_id].GetCostInCity()
             if player.CheckEnoughElectros(cost):
                 self.__board.cityIds_to_CityClass[city_id].PlayerBuyCity(player.GetName())
-                player.BuyCity(city_id,cost)
+                player.BuyCity(city_id,int(cost))
                 return True
         return False
 
     def Finshed_city_buying(self) -> bool:
+        """Marks the end of phase 4, returns true if all players have finished buying cities
+
+        Returns:
+            bool: True if all players have finished buying cities, False otherwise
+        """
         if self.__players_to_buy:
             return False
         return True
@@ -1340,7 +1457,19 @@ class Phase4:
                 
 
 class Phase5:
+    """holds phase 5 logic
+    """
     def __init__(self,Players:List[PlayerC],ResourceMarket:R_Market,PowerStationMarket:PS_Market,Board:BoardC,Stage:int,Used_Discount:bool):
+        """Phase 5 initialisation
+
+        Args:
+            Players (List[PlayerC]): a list of players in the game
+            ResourceMarket (R_Market): the resource market
+            PowerStationMarket (PS_Market): the power station market
+            Board (BoardC): the game board
+            Stage (int): the current stage of the game
+            Used_Discount (bool): whether a discount was used in phase 2
+        """
         self.__Players = list(Players)
         self.__ResourceMarket = ResourceMarket
         self.__PowerStationMarket = PowerStationMarket
@@ -1356,6 +1485,8 @@ class Phase5:
         
         
     def Restock_Resources(self):
+        """Restocks the resources market according to Power Grid rules
+        """
         ResourceAmountResupply = {
             3: [{'C':4, 'O':2, 'G':1, 'N':1}, {'C':5, 'O':3, 'G':2, 'N':1}, {'C':3, 'O':4, 'G':3, 'N':1}],
             4: [{'C':5, 'O':3, 'G':2, 'N':1}, {'C':6, 'O':4, 'G':3, 'N':2}, {'C':4, 'O':5, 'G':4, 'N':2}],
@@ -1367,13 +1498,33 @@ class Phase5:
             self.__ResourceMarket.Add_Resource(resource, ResourceAmountResupply[self.__NofPlayers][self.__Stage-1][resource])
         
     def GetInfoForBureaucracy(self) -> tuple[PlayerC|Literal[False],int,int,List[PowerStationC],dict[str,int]]:
+        """Gives infomration for bureacary 
+
+        Returns:
+            tuple[PlayerC|Literal[False],int,int,List[PowerStationC],dict[str,int]]: player class of next player to do bureaucracy or False, their electros, number of cities, list of powerstations, resources dict
+        """
         if not self.__Players_left_to_do_bureaucracy:
             return (False,0,0,[],{})
         else:
             player = self.__Players_left_to_do_bureaucracy[0]
             return (player, player.GetElectros(),len(player.GetCities() ),player.GetPowerStations(), player.GetResources())
 
-    def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]]):
+    def Player_Do_Bureaucracy(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]]) -> int:
+        """Completes bureaucracy for a player
+
+        Args:
+            player (PlayerC): the player doing bureaucracy
+            Stations_Powered_resources_Dict (dict[PowerStationC,dict[str,int]]): the planned powering of stations with resources
+
+        Raises:
+            Exception: if the player tries to power a station they do not own
+            Exception: if the player does not have enough resources for the plan
+            Exception: if the plan does not work due to insufficient fuel
+            Exception: if it is not the player's turn to do bureaucracy
+
+        Returns:
+            int: the total number of cities powered by the player
+        """
         if player == self.__Players_left_to_do_bureaucracy[0]:
             stations = player.GetPowerStations()
             # 1. Validate Ownership
@@ -1409,6 +1560,15 @@ class Phase5:
             raise Exception("It's not this player's turn to do bureaucracy.")
     
     def Correct_resources_used_in_planned_powering(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]])-> bool:
+        """Uses up the resources for the planned powering
+
+        Args:
+            player (PlayerC): the player doing bureaucracy
+            Stations_Powered_resources_Dict (dict[PowerStationC,dict[str,int]]): the planned powering of stations with resources
+
+        Returns:
+            bool: True if resources were successfully used, False otherwise
+        """
         players_resources = player.GetResources()
         for station, fuel_dict in Stations_Powered_resources_Dict.items():
             for fueltype, amount in fuel_dict.items():
@@ -1417,6 +1577,15 @@ class Phase5:
         return True
     
     def Check_Player_has_resources_for_planned_powering(self,player:PlayerC,Stations_Powered_resources_Dict:dict[PowerStationC,dict[str,int]])-> bool:
+        """Check the player has the reosurces for what they planned
+
+        Args:
+            player (PlayerC): the player doing bureaucracy
+            Stations_Powered_resources_Dict (dict[PowerStationC,dict[str,int]]): the planned powering of the powerstations
+
+        Returns:
+            bool: True if the player has enough resources for the planned powering, False otherwise
+        """
         players_resources = player.GetResources()
         fuel_wanted = {'C':0,'O':0,'G':0,'N':0}
         for station, fuel_dict in Stations_Powered_resources_Dict.items():
@@ -1429,13 +1598,28 @@ class Phase5:
         return True
 
     def Pay_formulae(self,number_of_cities:int) -> int:
-        #Computes the nth term of the sequence:
-        #y(n) = 10 + 12n - floor(n^2 / 4)
+        """Calculates the payment a player must make based on number of cities powered 
+        uses the formula: 10 + 12 * number_of_cities - int(number_of_cities ** 2 / 4)
+
+        Args:
+            number_of_cities (int): the total number of cities powered by the player
+
+        Returns:
+            int: the payment amount the player must make
+        """
         return 10 + 12 * number_of_cities - int(number_of_cities ** 2 / 4)
 
 
 
     def CheckStageChangeAndWin(self)->tuple[PlayerC|None, int]:
+        """Check wheter there is a stage change or if someone has won
+
+        Raises:
+            Exception: Raised if not all players have completed bureaucracy.
+
+        Returns:
+            tuple[PlayerC|None, int]: The player who won and the current stage, or None and the current stage if no winner.
+        """
         if self.__Players_left_to_do_bureaucracy:
             raise Exception("Not all players have completed bureaucracy.")
         
@@ -1448,11 +1632,13 @@ class Phase5:
                     self.__Stage = 2
                     self.__PowerStationMarket.Stage2()
                     self.__Board.ChangeStage(self.__Stage)
+        #stage 3 check
         if self.__Stage != 3:
             if self.__PowerStationMarket.Stage3():
                 self.__Stage = 3
                 self.__Board.ChangeStage(self.__Stage)
         self.__Players.sort()
+        #win check
         if len(self.__Players[0].GetCities()) >= winCondition[len(self.__Players)]:
             highest_score = 0
             highest_player:list[PlayerC] = []
