@@ -51,7 +51,6 @@ class Server:
         self.kill = False
         self.Rankings_to_be_updated: List[tuple[str,dict[str,int]]] = [] # List of (winner,dict(username, electros)) to update rankings 
         self.ranking_lock = threading.Lock() # Lock to safely access the list
-        self.last_broadcast: dict[int, str] = {} # Stores the last broadcast message for each game
 
     def connection_listen_loop(self):
         """Detects socket connections and sends them to setup
@@ -342,8 +341,8 @@ class Server:
                                             self.send_Board_to_everyone(game_id)
                                             BuyStartingStationMessage = MESSAGES.BuyStartingStationRequest.construct_payload(market,next_player,valid_values,game_state.Get_electros_of(next_player))
                                             self.Broadcast_to_game(game_id,BuyStartingStationMessage)
-                                    
-                                    raise Exception("Failed to start auction after starting cities chosen")
+                                    else:
+                                        raise Exception("Failed to start auction after starting cities chosen")
                             else:
                                 # Invalid city choice, re-request from same player
                                 BuyCityRequestMessage = MESSAGES.BuyStartingCityRequest.construct_payload(next_player,game_state.Get_electros_of(next_player))
@@ -666,9 +665,9 @@ class Server:
                 time.sleep(0.05)
 
 
-            except Exception as e:
-                print(f"Error in game_logic_loop for Game ID {game_id}: {e}")
-                self.Broadcast_to_game(game_id,self.last_broadcast[game_id]) # Resend last broadcast to resync clients
+            #except Exception as e:
+                #print(f"Error in game_logic_loop for Game ID {game_id}: {e}")
+
     
     def Broadcast_to_game(self,game_id:int,message:str) -> None:
         """Sends a message to every player in a game, passes sending logic to send_message
@@ -679,7 +678,6 @@ class Server:
         """
         for client_socket in self.games[game_id].values():
             self.send_message(client_socket,message.encode())
-        self.last_broadcast[game_id] = message
         return
 
                 
