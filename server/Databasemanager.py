@@ -68,7 +68,6 @@ class DataBaseManagerC:
             cursor.execute(query, (player_id, provided_hash))
             return cursor.fetchone() is not None
 
-    # --- NEW METHOD: Updates both CurrentRankings and RankingHistory ---
     def update_ranking(self, player_id: int, new_ranking: int, new_wins: int, new_total_games: int):
         """
         Updates the player's current stats and logs the change in history.
@@ -77,7 +76,6 @@ class DataBaseManagerC:
             cursor = conn.cursor()
             
             # 1. Update (or Insert) the Current Rankings table
-            # INSERT OR REPLACE is a specific SQLite command that handles updates automatically
             cursor.execute("""
                 INSERT OR REPLACE INTO CurrentRankings (player_id, ranking, wins, number_of_games)
                 VALUES (?, ?, ?, ?);
@@ -91,7 +89,6 @@ class DataBaseManagerC:
             
             conn.commit()
 
-    # --- UPDATED: Now fetches from the faster CurrentRankings table ---
     def get_leaderboard(self) -> List[Tuple[str, int, int, int]]:
         """
         Returns: List of (username, ranking, wins, games_played)
@@ -107,7 +104,6 @@ class DataBaseManagerC:
             cursor.execute(query)
             return cursor.fetchall()
 
-    # --- NEW HELPER: Get current stats for calculations ---
     def get_player_stats(self, player_id: int) -> Tuple[int, int, int]:
         """
         Returns: (ranking, wins, number_of_games)
