@@ -200,8 +200,7 @@ class Server:
         if len(players) < self.MAX_CLIENTS:
             for i in range(random.randint(1, self.MAX_CLIENTS - len(players))):
                 chance = random.random()
-                if chance < 0.01: # 1% chance to add an AI player, 99% for a hard AI player
-                    #TODO
+                if chance < 0.1: # 10% chance to add an AI player, 90% for a hard AI player
                     self.games[game_id][f'AI_player_{i+1}'] = AIPlayer(f'AI_player_{i+1}')
                 else:
                     self.games[game_id][f'Hard_AI_player_{i+1}'] = HardAIPlayer(f'Hard_AI_player_{i+1}')
