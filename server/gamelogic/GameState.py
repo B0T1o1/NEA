@@ -839,19 +839,21 @@ class GameStateC:
             Exception: if not in phase 5
 
         Returns:
-            str|None: Winner's name if there is a winner, None otherwise
+            tuple[str|None,tuple[str,int,int]]: Winner's name if there is a winner, None otherwise, current stage, and a tuple of players and number of cities powered, and electros,sorted by most cities powered, then electros
         """
         if self.__Phase != 5:
             raise Exception("Not in Phase 5")
-        winner,self.__stage = self.__Phase5.CheckStageChangeAndWin()
+        winner,self.__stage, players_power = self.__Phase5.CheckStageChangeAndWin()
+        power_players = [(player.GetName(), power , player.GetElectros()) for player, power in players_power.items()]
+        power_players.sort(key=lambda x: (x[1], x[2]), reverse=True)
         if winner:
-            return winner.GetName()
+            return winner.GetName() , power_players
         self._Round += 1
         self.__Phase = 1
         self.Do_Phase_1_order()
         self.__Phase = 2
         self.__UsedDiscount = False
-        return None
+        return None , power_players
     
 
 
@@ -1611,14 +1613,14 @@ class Phase5:
 
 
 
-    def CheckStageChangeAndWin(self)->tuple[PlayerC|None, int]:
+    def CheckStageChangeAndWin(self)->tuple[PlayerC|None, int,dict[PlayerC,int]]:
         """Check wheter there is a stage change or if someone has won
 
         Raises:
             Exception: Raised if not all players have completed bureaucracy.
 
         Returns:
-            tuple[PlayerC|None, int]: The player who won and the current stage, or None and the current stage if no winner.
+            tuple[PlayerC|None, int,dict[PlayerC,int]]: The player who won and the current stage, or None and the current stage if no winner, and a dict of players and number of cities powered
         """
         if self.__Players_left_to_do_bureaucracy:
             raise Exception("Not all players have completed bureaucracy.")
@@ -1649,7 +1651,7 @@ class Phase5:
                 elif self.__Players_Powered_dict[player] == highest_score:
                     highest_player.append(player)
             if len(highest_player) == 1:
-                return highest_player[0],self.__Stage
+                return highest_player[0],self.__Stage , self.__Players_Powered_dict
             # If there's a tie, we need to check who has the most money
             if len(highest_player) > 1:
                 Most_Money = 0
@@ -1660,7 +1662,7 @@ class Phase5:
                         Player_With_most_money = player
                         Most_Money = Electros
                         #player with most money win
-                return Player_With_most_money,self.__Stage
-        return None, self.__Stage
+                return Player_With_most_money,self.__Stage , self.__Players_Powered_dict
+        return None, self.__Stage ,self.__Players_Powered_dict
 
 

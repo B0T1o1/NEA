@@ -49,7 +49,7 @@ class Server:
         self.MAX_CLIENTS = 6
         self.MIN_CLIENTS = 3
         self.kill = False
-        self.Rankings_to_be_updated: List[tuple[str,dict[str,int]]] = [] # List of (winner,dict(username, electros)) to update rankings 
+        self.Rankings_to_be_updated: List[tuple[str,List[tuple[str,int,int]]]] = [] # List of (winner,tuple(username,cities_powered, electros)) to update rankings 
         self.ranking_lock = threading.Lock() # Lock to safely access the list
 
     def connection_listen_loop(self):
@@ -575,7 +575,7 @@ class Server:
                         BureaucracyUpdateMessage = MESSAGES.BureaucracyUpdate.construct_payload(next_player,electros,number_of_cities,power_stations,resources)
                         self.Broadcast_to_game(game_id,BureaucracyUpdateMessage)
                     else:
-                        winner = game_state.Check_Stage_Change_And_Win() # Check if stage change or win condition met
+                        winner, players_power = game_state.Check_Stage_Change_And_Win() # Check if stage change or win condition met
                         # Proceed to next turn
                         if winner:
                             # End Game
@@ -584,7 +584,7 @@ class Server:
                             GameEndMessage = MESSAGES.GameEndNotification.construct_payload(winner)
                             self.Broadcast_to_game(game_id, GameEndMessage)
                             # Update rankings in database
-                            self.Rankings_to_be_updated.append((winner, {player: game_state.Get_electros_of(player) for player in game_state.Get_players()}))
+                            self.Rankings_to_be_updated.append((winner, players_power))
                             return # Exit game loop
                         self.send_Board_to_everyone(game_id)
                         
@@ -662,10 +662,6 @@ class Server:
 
             except queue.Empty:
                 time.sleep(0.05)
-
-
-            #except Exception as e:
-                #print(f"Error in game_logic_loop for Game ID {game_id}: {e}")
 
     
     def Broadcast_to_game(self,game_id:int,message:str) -> None:
@@ -795,13 +791,13 @@ class Server:
                     continue
 
                 try:
-                    winner_name, player_electros = game_result
+                    winner_name, players_power = game_result
                     print(f"Processing rankings for game won by {winner_name}")
 
                     participants = []
                     
                     # 1. Fetch current stats for all players in this game
-                    for username, electros in player_electros.items():
+                    for username, cities_powered, electros in players_power:
                         p_id = self.db_manager.get_player_id(username)
                         if p_id is None: continue 
 
@@ -814,12 +810,13 @@ class Server:
                             "rating": current_rating,
                             "wins": current_wins,
                             "games_played": total_games,
+                            "cities_powered": cities_powered,
                             "electros": electros,
                             "match_rank": 0
                         })
 
-                    # 2. Sort by Electros (Descending) to determine rank
-                    participants.sort(key=lambda x: x["electros"], reverse=True)
+                    # 2. Sort by cities powered and Electros (Descending) to determine rank, should already be sorted but just in case 
+                    participants.sort(key=lambda x: ( x["cities_powered"], x["electros"]), reverse=True)
                     
                     # 3. Ensure Winner is Rank 1 (Handle ties favoring the declared winner)
                     for i, p in enumerate(participants):
