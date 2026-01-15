@@ -717,13 +717,13 @@ class HardAIPlayer(AIPlayer):
         """Deciedes whether to bid on a poewrstaion by considering if it would have gone to buy that powerstation out of the top 5 (as if skip a new powerstation will exist) then using 1/(min_bid-value + 1) as probability of bidding
 
         Args:
-            min_bid (int): _description_
-            electros (int): _description_
-            powerstation (str): _description_
-            held_by_player (str): _description_
+            min_bid (int): minimum bid required
+            electros (int): electros available to the AI
+            powerstation (str): powerstation being bid on
+            held_by_player (str): player currently holding the powerstation
 
         Returns:
-            _type_: _description_
+            int|bool: amount to bid or False to skip
         """
         # Check that we can afford it
         if electros < min_bid:

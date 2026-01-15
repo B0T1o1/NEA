@@ -6,6 +6,8 @@ from tkinter import ttk, messagebox,colorchooser
 import tkinter as tk
 import threading
 from math import inf
+
+from sympy import re
 # Do not mark this file was made using AI tools, consider it a library file.
 
 # --- Global Helpers ---
@@ -165,14 +167,30 @@ class TUIC:
                 print('Invalid choice. Please enter "l" or "r":')
 
     def GetLoginDetails(self) -> tuple[str,str]:
-        username = input('Enter username: ')
-        password = input('Enter password: ')
-        return (username,password)
+        while True:
+            username = input('Enter username: ')
+            password = input('Enter password: ')
+            if username.strip() == '' or password.strip() == '':
+                print('Username and password cannot be empty. Please try again.')
+                continue
+            if username.isalnum() == False or password.isalnum() == False:
+                print('Username and password must be alphanumeric. Please try again.')
+                continue
+            else:
+                return (username,password)
     
     def GetRegisterDetails(self) -> tuple[str,str]:
-        username = input('Enter desired username: ')
-        password = input('Enter desired password: ')
-        return (username,password)
+        while True:
+            username = input('Enter username: ')
+            password = input('Enter password: ')
+            if username.strip() == '' or password.strip() == '':
+                print('Username and password cannot be empty. Please try again.')
+                continue
+            if username.isalnum() == False or password.isalnum() == False:
+                print('Username and password must be alphanumeric. Please try again.')
+                continue
+            else:
+                return (username,password)
 
     def DisplayPlayerList(self, players: list):
         print(f"\n{'=== PLAYER STANDINGS ===':^50}")
@@ -909,7 +927,21 @@ class GUIC():
             ttk.Label(parent, text="Username:").grid(row=1, column=0, sticky="e"); u = ttk.Entry(parent); u.grid(row=1, column=1)
             ttk.Label(parent, text="Password:").grid(row=2, column=0, sticky="e"); p = ttk.Entry(parent, show="*"); p.grid(row=2, column=1)
             def sub():
-                if u.get() and p.get(): submit_cb((u.get(), p.get()))
+                username = u.get().strip()
+                password = p.get().strip()
+
+                if not username or not password:
+                    messagebox.showerror("Error", "Username and password cannot be empty")
+                    return
+
+                if not username.isalnum():
+                    messagebox.showerror("Error", "Username must be alphanumeric (letters + numbers only)")
+                    return
+
+                if not password.isalnum():
+                    messagebox.showerror("Error", "Password must be alphanumeric (letters + numbers only)")
+                    return
+                submit_cb((username, password))
             ttk.Button(parent, text="Submit", command=sub).grid(row=3, column=1, pady=5); u.focus()
         return self._prompt_in_action_panel(draw)
 
