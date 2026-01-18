@@ -167,7 +167,7 @@ class SimulationServer(Server):
 
 if __name__ == '__main__':
     # Configuration
-    NUMBER_OF_GAMES = 50 # Number of AI vs AI games to simulate
+    NUMBER_OF_GAMES = 5 # Number of AI vs AI games to simulate
 
     sim_server = SimulationServer()
     sim_server.run_simulation(NUMBER_OF_GAMES)

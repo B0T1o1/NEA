@@ -21,7 +21,7 @@ class PS_Market:
         random.shuffle(self.__PluggedPowerStations)
         self.__PluggedPowerStations = self.RemovePowerStation(NofPlayers,PLUGGED)
         self.__Market:list[PowerStationC] = self.__PluggedPowerStations[:8]
-        self.__Market.sort()
+        self.MergeSortMarket()
         self.__Deck = self.__PluggedPowerStations[8:-1]
         self.__Cover = self.__PluggedPowerStations[-1]
         self.__Deck += self.RemovePowerStation(NofPlayers,UNPLUGGED)
@@ -110,12 +110,12 @@ class PS_Market:
                         self.__Market.pop(index)
                         if self.__Deck:
                             self.__Market.append(self.__Deck.pop(0))
-                        self.__Market.sort()
+                        self.MergeSortMarket()
                 else:
                     self.__Market.pop(index)
                     if self.__Deck:
                         self.__Market.append(self.__Deck.pop(0))
-                    self.__Market.sort()                
+                    self.MergeSortMarket()              
                 return Station
         raise ValueError("PowerStation not in Market")
             
@@ -137,7 +137,7 @@ class PS_Market:
             self.__Market.pop(0)    
             if self.__Deck:
                 self.__Market.append(self.__Deck.pop(0))
-            self.__Market.sort()
+            self.MergeSortMarket()
         else:
             raise ValueError("Cannot remove discounted powerstation in stage 3")
 
@@ -170,7 +170,61 @@ class PS_Market:
         if self.__stage <=  2:
             self.__Deck.append(self.__Market.pop())
             self.__Market.append(self.__Deck.pop(0))
-            self.__Market.sort()
+            self.MergeSortMarket()
+
+
+    def MergeSortMarket(self) -> None:
+        """Sorts the market using merge sort, passes to recursive sort."""
+        self.__Market = self.__merge_sort(self.__Market)
+
+    def __merge_sort(self, arr: list[PowerStationC]) -> list[PowerStationC]:
+        """ Recursively calls itself and merges markets
+
+        Args:
+            arr (list[PowerStationC]): powerstations to be sorted
+
+        Returns:
+            list[PowerStationC]: sorted powerstations
+        """
+        if len(arr) <= 1:
+            return arr
+
+        mid = len(arr) // 2
+        left = self.__merge_sort(arr[:mid])
+        right = self.__merge_sort(arr[mid:])
+
+        return self.__merge(left, right)
+
+    def __merge(self, left: list[PowerStationC], right: list[PowerStationC]) -> list[PowerStationC]:
+        """Given two lists of powerstations, merges two lists, keeping them sorted
+
+        Args:
+            left (list[PowerStationC]): list of sorted powerstations
+            right (list[PowerStationC]): lsit of sorted powerstations
+
+        Returns:
+            list[PowerStationC]: list of merges and sorted powerstations
+        """
+        merged: list[PowerStationC] = []
+        i = 0
+        j = 0
+
+        # Merge while both lists have elements
+        while i < len(left) and j < len(right):
+            if left[i] < right[j]:
+                merged.append(left[i])
+                i += 1
+            else:
+                merged.append(right[j])
+                j += 1
+
+        if i < len(left):
+            merged.extend(left[i:])
+        if j < len(right):
+            merged.extend(right[j:])
+        return merged
+
+
             
 
 
