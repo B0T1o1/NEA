@@ -106,7 +106,7 @@ class SimulationServer(Server):
         
         try:
             self.game_states[game_id].Set_number_of_players(4)
-            self.game_states[game_id].Set_settings()
+            self.game_states[game_id].Set_settings(map='A')
             self.game_states[game_id].Set_player_names(list(players.keys()))
         except ValueError as e:
             print(f"Setup Failed: {e}")

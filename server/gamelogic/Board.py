@@ -18,7 +18,7 @@ class BoardC:
             file = open(filename,'r')
         except FileNotFoundError:
             pass
-        map_string_to_index = {'G':0}
+        map_string_to_index = {'G':0,'A':1}
 
         self.__map_data = json.load(file)["maps"][map_string_to_index[map]]
         self._regions = regions

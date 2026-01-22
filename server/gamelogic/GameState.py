@@ -1330,6 +1330,8 @@ class Phase3:
         Returns:
             bool: True if the purchase was successful, False otherwise
         """
+        if len(self.Get_Resource_Costs()[ResourceType]) < amount:
+            return False
         if player == self.__Players_to_buy[0] and player.CheckEnoughElectros(self.Get_Resource_Costs()[ResourceType][amount-1]) and player.HasResourceSpace(ResourceType,amount):
             
             cost = self.__Resource_Market.Buy_Resource(ResourceType,amount)

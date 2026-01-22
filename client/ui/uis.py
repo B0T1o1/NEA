@@ -75,7 +75,7 @@ class UIC():
     def GetStartingCity(self):
         return self.UI.GetStartingCity()
     def DisplayMarket(self,market):
-        return self.UI.DisplayMarket(market)
+        return self.UI.DisplayMarket(market.replace('inf',"'inf"))
     def GetStartingBid(self, Start_of_game: bool,valid_values,electros):
         return self.UI.GetStartingBid(Start_of_game,valid_values,electros)
     def DisplayElectros(self,player,electros):
@@ -387,7 +387,7 @@ class TUIC:
             if city_id == 'FINISH':
                 return 'FINISH'
             if city_id in costs:
-                if costs[city_id] <= electros:
+                if float(costs[city_id]) <= electros:
                     return city_id
                 else:
                     print(f'You do not have enough electros to buy {city_id}. It costs {costs[city_id]} electros.')

@@ -33,8 +33,10 @@ class Server:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,True)
         self.server_socket.bind((self.host,self.port))
-        self.db_manager = DataBaseManagerC() 
-        self.db_manager.setup_tables()
+        self.db_manager = DataBaseManagerC()
+        self.db_lock = threading.Lock() 
+        with self.db_lock:
+            self.db_manager.setup_tables()
         self.clients: List[socket.socket] = []
         self.queue: List[socket.socket] = []
         self.ready_clients: List[tuple[str, socket.socket]] = []
@@ -47,7 +49,7 @@ class Server:
         self.client_keys: dict[int, tuple[int,int]] = {} # Stores the private_key for each client socket
         self.game_queues: dict[int,queue.Queue[tuple[str, MESSAGES.Message]]] = {}
         self.MAX_CLIENTS = 6
-        self.MIN_CLIENTS = 3
+        self.MIN_CLIENTS = 2
         self.kill = False
         self.Rankings_to_be_updated: List[tuple[str,List[tuple[str,int,int]]]] = [] # List of (winner,tuple(username,cities_powered, electros)) to update rankings 
         self.ranking_lock = threading.Lock() # Lock to safely access the list
@@ -56,7 +58,7 @@ class Server:
         """Detects socket connections and sends them to setup
         """
         Start_of_timer = datetime.datetime.now()
-        while len(self.clients) < self.MAX_CLIENTS and ((datetime.datetime.now() - Start_of_timer).total_seconds() < 60 if Start_of_timer else True): # Checks for max clients or timer expiry
+        while not self.kill:# Checks for max clients or timer expiry
             try: 
                 print('Server listening for connections on {}:{}'.format(self.host,self.port))
                 self.server_socket.settimeout(1.0)
@@ -124,27 +126,28 @@ class Server:
                             self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
                         else:
                             # Get ID first
-                            player_id = self.db_manager.get_player_id(username_attempt)
-                            # Hash the password provided by user
-                            hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-                            
-                            # Verify ID exists AND hash matches
-                            if player_id and self.db_manager.verify_hash_in_db(player_id, hashed_pw):
-                                # Successful login
-                                username = username_attempt # Set the session username
-                                print(f"User {username} logged in successfully.")
-                                # Send confirmation
-                                self.send_message(client_socket, MESSAGES.LoginConfirmation.construct_payload(True).encode())
-                                self.ready_clients.append((username, client_socket))
-                                self.Logged_in_clients.append(username)
-                                self.queue.remove(client_socket)
-                                login_successful = True
-                                break
-                            else:
-                                # Failed login
-                                print(f"User {username_attempt} failed to log in.")
-                                self.send_message(client_socket, MESSAGES.LoginConfirmation.construct_payload(False).encode())
-                                self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
+                            with self.db_lock:
+                                player_id = self.db_manager.get_player_id(username_attempt)
+                                # Hash the password provided by user
+                                hashed_pw = hashlib.sha256(password.encode()).hexdigest()
+                                
+                                # Verify ID exists AND hash matches
+                                if player_id and self.db_manager.verify_hash_in_db(player_id, hashed_pw):
+                                    # Successful login
+                                    username = username_attempt # Set the session username
+                                    print(f"User {username} logged in successfully.")
+                                    # Send confirmation
+                                    self.send_message(client_socket, MESSAGES.LoginConfirmation.construct_payload(True).encode())
+                                    self.ready_clients.append((username, client_socket))
+                                    self.Logged_in_clients.append(username)
+                                    self.queue.remove(client_socket)
+                                    login_successful = True
+                                    break
+                                else:
+                                    # Failed login
+                                    print(f"User {username_attempt} failed to log in.")
+                                    self.send_message(client_socket, MESSAGES.LoginConfirmation.construct_payload(False).encode())
+                                    self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
 
                     # --- REGISTRATION LOGIC ---
                     elif MessageType == 'RegisterRequest':
@@ -155,19 +158,20 @@ class Server:
                             self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(False).encode())
                         else:
                             # Check if username already exists
-                            if self.db_manager.username_exists(username_reg):
-                                print(f"Registration failed: {username_reg} exists.")
-                                self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(False).encode())
-                                self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
-                            else:
-                                # Register new user
-                                hashed_pw = hashlib.sha256(password_reg.encode()).hexdigest()
-                                self.db_manager.create_player(username_reg, hashed_pw)
-                                
-                                print(f"User {username_reg} registered successfully.")
-                                # Send success response
-                                self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(True).encode())
-                                self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
+                            with self.db_lock:
+                                if self.db_manager.username_exists(username_reg):
+                                    print(f"Registration failed: {username_reg} exists.")
+                                    self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(False).encode())
+                                    self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
+                                else:
+                                    # Register new user
+                                    hashed_pw = hashlib.sha256(password_reg.encode()).hexdigest()
+                                    self.db_manager.create_player(username_reg, hashed_pw)
+                                    
+                                    print(f"User {username_reg} registered successfully.")
+                                    # Send success response
+                                    self.send_message(client_socket, MESSAGES.RegisterResponse.construct_payload(True).encode())
+                                    self.send_message(client_socket, MESSAGES.LoginRequest.construct_payload(RSA_keypair[0]).encode())
 
                 if not data: break 
 
@@ -210,7 +214,7 @@ class Server:
         # Initialize State
         self.game_states[game_id] = GameStateC()
         self.game_states[game_id].Set_number_of_players(len(players.keys()))
-        self.game_states[game_id].Set_settings()
+        self.game_states[game_id].Set_settings(map=random.choice(['G','A']))
         self.game_states[game_id].Set_player_names([p for p in players.keys()])
 
         
@@ -866,6 +870,7 @@ class Server:
                                 player["id"], new_rating, new_wins, new_games
                             )
                             print(f"Updated {player['username']}: {player['rating']} -> {new_rating}")
+                    print(self.db_manager.get_leaderboard())
                 
                 except Exception as e:
                     print(f"Error in Update_Player_Rankings_Loop: {e}")

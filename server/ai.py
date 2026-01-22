@@ -94,6 +94,7 @@ class AIPlayer:
         Returns:
             str: The next message string to be sent to the server
         """
+        # treats like queue
         with self._lock:  # Use the threading lock
             if self._Send_Message_Queue:
                 # Returns the message string 
@@ -817,8 +818,8 @@ class HardAIPlayer(AIPlayer):
                     if used_dict['O'] !=0:
                         if used_dict['C'] !=0:
                                 
-                            if (resource_space.get('O', 0) < fuel_amount) or (resource_space.get('C', 0) < fuel_amount) or (self._electros.get(self._Name, 0) < (cost_of_oil + cost_of_coal)):
-                                # Not enough space, skip it
+                            if (resource_space['O'] < used_dict['O']) or (resource_space['C'] < used_dict['C']) or (self._electros.get(self._Name, 0) < (cost_of_oil + cost_of_coal)):
+                                # Not enough money, skip it
                                 self._index_of_next_station_to_buy_resources_for += 1
                                 continue
                             if self._electros.get(self._Name, 0) >= (cost_of_oil + cost_of_coal):
